@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------*
- | Copyright (C) 2006 Christopher Kohlhaas                                  |
+ | Copyright (C) 2011 Bob Jordaens                                          |
  |                                                                          |
  | This program is free software; you can redistribute it and/or modify     |
  | it under the terms of the GNU General Public License as published by the |
@@ -10,48 +10,44 @@
  | program with every library, which license fulfills the Open Source       |
  | Definition as published by the Open Source Initiative (OSI).             |
  *--------------------------------------------------------------------------*/
-package org.rapla.plugin.demo;
+package org.rapla.plugin.occupationview;
+
 import org.apache.avalon.framework.configuration.Configuration;
 import org.rapla.components.xmlbundle.I18nBundle;
 import org.rapla.components.xmlbundle.impl.I18nBundleImpl;
 import org.rapla.framework.Container;
 import org.rapla.framework.PluginDescriptor;
 import org.rapla.plugin.RaplaExtensionPoints;
+import org.rapla.plugin.RaplaPluginMetaInfo;
 
-/**
-   This is a demonstration of a rapla-plugin. It adds a sample usecase and option
-   to the rapla-system.
- */
-
-public class MyPlugin
-    implements
-    PluginDescriptor
+public class OccupationPlugin implements PluginDescriptor
 {
-	public static final String RESOURCE_FILE = MyPlugin.class.getPackage().getName() + ".MyPluginResources";
-    public static final String PLUGIN_CLASS = MyPlugin.class.getName();
+	static boolean ENABLE_BY_DEFAULT = false;
+    public static final String RESOURCE_FILE =OccupationPlugin.class.getPackage().getName() + ".OccupationResources";
+    public static final String PLUGIN_CLASS = OccupationPlugin.class.getName();
 
-    public String toString() {
-        return "MyPlugin";
+
+    public String toString()
+    {
+        return "Occupation View";
     }
 
-    /**
-     * @see org.rapla.framework.PluginDescriptor#provideServices(org.rapla.framework.general.Container)
-     */
-    public void provideServices(Container container, Configuration config) {
-        if ( !config.getAttributeAsBoolean("enabled", false) )
+    public void provideServices(Container container, Configuration config)
+    {
+        if ( !config.getAttributeAsBoolean("enabled", ENABLE_BY_DEFAULT) )
         	return;
 
         container.addContainerProvidedComponent( I18nBundle.ROLE, I18nBundleImpl.class.getName(), RESOURCE_FILE,I18nBundleImpl.createConfig( RESOURCE_FILE ) );
-        container.addContainerProvidedComponent( RaplaExtensionPoints.CLIENT_EXTENSION, MyPluginInitializer.class.getName(), PLUGIN_CLASS, config);
-        container.addContainerProvidedComponent( RaplaExtensionPoints.USER_OPTION_PANEL_EXTENSION, MyOption.class.getName(),PLUGIN_CLASS, config);
-
-        
+        container.addContainerProvidedComponent( RaplaExtensionPoints.CALENDAR_VIEW_EXTENSION, OccupationFactory.class.getName(), OccupationFactory.OCCUPATION_VIEW, null);
+        container.addContainerProvidedComponent( RaplaExtensionPoints.USER_OPTION_PANEL_EXTENSION, OccupationOption.class.getName(),PLUGIN_CLASS, config);
     }
 
     public Object getPluginMetaInfos( String key )
     {
+        if ( RaplaPluginMetaInfo.METAINFO_PLUGIN_ENABLED_BY_DEFAULT.equals( key )) {
+            return new Boolean( ENABLE_BY_DEFAULT );
+        }
         return null;
     }
-
 }
 
