@@ -12,9 +12,9 @@
  *--------------------------------------------------------------------------*/
 package org.rapla.plugin.occupationview;
 
-import org.apache.avalon.framework.configuration.Configuration;
 import org.rapla.components.xmlbundle.I18nBundle;
 import org.rapla.components.xmlbundle.impl.I18nBundleImpl;
+import org.rapla.framework.Configuration;
 import org.rapla.framework.Container;
 import org.rapla.framework.PluginDescriptor;
 import org.rapla.plugin.RaplaExtensionPoints;

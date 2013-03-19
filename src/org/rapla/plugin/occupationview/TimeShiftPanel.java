@@ -33,7 +33,6 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import org.apache.avalon.framework.activity.Disposable;
 import org.rapla.components.calendar.DateChangeEvent;
 import org.rapla.components.calendar.DateChangeListener;
 import org.rapla.components.calendar.RaplaArrowButton;
@@ -42,6 +41,7 @@ import org.rapla.components.calendar.RaplaNumber;
 import org.rapla.components.calendar.RaplaTime;
 import org.rapla.components.layout.TableLayout;
 import org.rapla.components.util.DateTools;
+import org.rapla.framework.Disposable;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
 import org.rapla.gui.CalendarModel;
