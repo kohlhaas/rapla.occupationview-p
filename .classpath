@@ -2,16 +2,15 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="src" path="/Rapla">
-		<accessrules>
+			<accessrules>
 			<accessrule kind="nonaccessible" pattern="**/internal/**"/>
-			<accessrule kind="accessible" pattern="org/apache/avalon/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/framework/*"/>
+			<accessrule kind="accessible" pattern="org/rapla/framework/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/entities/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/facade/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/components/xmlbundle/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/components/calendar/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/components/layout/*"/>
+			<accessrule kind="accessible" pattern="javax/servlet/**"/>
+			<accessrule kind="accessible" pattern="org/rapla/components/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/gui/*"/>
+			<accessrule kind="accessible" pattern="org/rapla/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/gui/toolkit/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/plugin/mail/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/plugin/*"/>

@@ -222,7 +222,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         // get default user preferences from user profile
         options = getCalendarOptions();
     	repeatingType = options.getRepeatingType();
-    	repeatingDuration = options.isInfiniteRepeating() ? -1 : (1 * getCalendarOptions().getnTimes());  // -1:infinite; >0:=n-times
+    	repeatingDuration = options.getDefaultRepeatingDuration(); // -1:infinite; >0:=n-times
         //update();
     }
 
@@ -1133,9 +1133,10 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		            if( reservation != null) {
 			    		try {
 			    			if(canModify(reservation) || getQuery().canExchangeAllocatables(reservation))
-			        			reservation.setSelectedSlotDate(occupationTableModel.getColumnDate(c));            		
-			    				getReservationController().edit(reservation);
-			        		} catch (RaplaException e) {
+			    			{
+			    				edit( reservation, c);
+			    			}
+			    			} catch (RaplaException e) {
 			        			// TODO Auto-generated catch block
 			        			e.printStackTrace();
 			        		}
@@ -1143,8 +1144,13 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        		}
 	    		}
 	    	}
+
+        
 	    }
     
+    public void edit(Reservation reservation, int c) throws RaplaException {
+        getReservationController().edit(reservation.getAppointments()[0], occupationTableModel.getColumnDate(c));
+    }
     public class newAdapter implements ActionListener {
     	private Object obj;
     	private int days;
@@ -1159,13 +1165,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	int c = table.getSelectedColumn();
         	//int r = table.getSelectedRow();
         	if(evt.getActionCommand().equals("new")) {
-        		((Reservation) obj).setSelectedSlotDate(occupationTableModel.getColumnDate(c));
-    			getReservationController().edit((Reservation)obj);
+    			edit((Reservation)obj,c);
         	}
         	else 
         		if(evt.getActionCommand().equals("edit")) {
-        			((Reservation) obj).setSelectedSlotDate(occupationTableModel.getColumnDate(c));            		
-        			getReservationController().edit((Reservation) obj);
+        			edit((Reservation) obj,c);
         		}
         		else {
             		if(evt.getActionCommand().equals("delete")) {
