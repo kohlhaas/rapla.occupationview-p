@@ -3,7 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="src" path="/Rapla">
 			<accessrules>
-			<accessrule kind="nonaccessible" pattern="**/internal/**"/>
+			<accessrule kind="discouraged" pattern="org/rapla/**/internal/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/framework/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/entities/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/facade/*"/>
@@ -17,7 +17,8 @@
 			<accessrule kind="accessible" pattern="org/rapla/servletpages/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/plugin/abstractcalendar/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/components/iolayer/*"/>
-			<accessrule kind="discouraged" pattern="**"/>
+			<accessrule kind="discouraged" pattern="org/rapla/**"/>
+			<accessrule kind="nonaccessible" pattern="**"/>
 		</accessrules>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
