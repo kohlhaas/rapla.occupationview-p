@@ -85,10 +85,10 @@ import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
 import org.rapla.gui.CalendarModel;
 import org.rapla.gui.CalendarOptions;
+import org.rapla.gui.CalendarSelectionModel;
 import org.rapla.gui.RaplaGUIComponent;
 import org.rapla.gui.SwingCalendarView;
 import org.rapla.gui.internal.action.AppointmentAction;
-import org.rapla.gui.internal.common.CalendarSelectionModel;
 import org.rapla.gui.toolkit.DialogUI;
 
 public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarView
