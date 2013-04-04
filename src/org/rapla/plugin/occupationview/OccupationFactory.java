@@ -14,10 +14,10 @@ package org.rapla.plugin.occupationview;
 
 import javax.swing.Icon;
 
+import org.rapla.facade.CalendarModel;
 import org.rapla.facade.RaplaComponent;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
-import org.rapla.gui.CalendarModel;
 import org.rapla.gui.SwingCalendarView;
 import org.rapla.gui.ViewFactory;
 import org.rapla.gui.images.Images;
