@@ -38,7 +38,7 @@ public class OccupationPlugin implements PluginDescriptor
         	return;
 
         container.addContainerProvidedComponent( I18nBundle.class, I18nBundleImpl.class, RESOURCE_FILE,I18nBundleImpl.createConfig( RESOURCE_FILE ) );
-        container.addContainerProvidedComponent( RaplaExtensionPoints.CALENDAR_VIEW_EXTENSION, OccupationFactory.class);
+        container.addContainerProvidedComponent( RaplaExtensionPoints.CALENDAR_VIEW_EXTENSION, OccupationFactory.class, OccupationFactory.OCCUPATION_VIEW);
         container.addContainerProvidedComponent( RaplaExtensionPoints.USER_OPTION_PANEL_EXTENSION, OccupationOption.class);
     }
 
