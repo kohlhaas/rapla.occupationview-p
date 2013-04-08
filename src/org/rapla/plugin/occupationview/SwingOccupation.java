@@ -200,7 +200,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
        
         if ( editable ) {
             PopupTableHandler popupHandler = new PopupTableHandler();
-            container.addMouseListener( popupHandler);;
+            container.addMouseListener( popupHandler);
             table.addMouseListener( popupHandler );
         }
 
