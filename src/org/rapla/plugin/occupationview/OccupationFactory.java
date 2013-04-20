@@ -19,13 +19,12 @@ import org.rapla.facade.RaplaComponent;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
 import org.rapla.gui.SwingCalendarView;
-import org.rapla.gui.ViewFactory;
+import org.rapla.gui.SwingViewFactory;
 import org.rapla.gui.images.Images;
-import org.rapla.servletpages.RaplaPageGenerator;
 
-public class OccupationFactory extends RaplaComponent implements ViewFactory
+public class OccupationFactory extends RaplaComponent implements SwingViewFactory
 {
-    public OccupationFactory( RaplaContext context ) throws RaplaException
+    public OccupationFactory( RaplaContext context ) 
     {
         super( context );
         setChildBundleName( OccupationPlugin.RESOURCE_FILE);
@@ -36,11 +35,6 @@ public class OccupationFactory extends RaplaComponent implements ViewFactory
     public SwingCalendarView createSwingView(RaplaContext context, CalendarModel model, boolean editable) throws RaplaException
     {
         return new SwingOccupation( context, model, editable);
-    }
-
-    public RaplaPageGenerator createHTMLView(RaplaContext context, CalendarModel model) throws RaplaException
-    {
-    	 return null;
     }
 
     public String getViewId()

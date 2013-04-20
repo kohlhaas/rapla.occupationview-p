@@ -11,6 +11,7 @@
 			<accessrule kind="accessible" pattern="org/rapla/components/**"/>
 			<accessrule kind="accessible" pattern="org/rapla/gui/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/*"/>
+			<accessrule kind="accessible" pattern="org/rapla/client/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/gui/toolkit/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/plugin/mail/*"/>
 			<accessrule kind="accessible" pattern="org/rapla/plugin/*"/>
