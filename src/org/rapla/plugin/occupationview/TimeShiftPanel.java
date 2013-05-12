@@ -25,6 +25,7 @@ import java.util.Date;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -73,11 +74,12 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
     RaplaNumber freeSlot;
     JLabel freeSlotLabel = new JLabel();
     Calendar calendarDS = getRaplaLocale().createCalendar();
-    int duration = 86400000;   
+    int duration = 86400000;  
     JButton todayButton= new RaplaButton(getString("today"), RaplaButton.SMALL);
 // BJO 00000101
     boolean isStartDayFirstDay = false;
 // BJO 00000101
+    JCheckBox compactField = new JCheckBox();
     
     public TimeShiftPanel(RaplaContext sm, CalendarModel model) throws RaplaException {
         super( sm );
@@ -100,13 +102,12 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         TitledBorder dateBorder = BorderFactory.createTitledBorder(blackline,getI18n().getString("date")); 
         calendarPanel.setBorder(dateBorder);
 
+        timeShiftTimes = new RaplaNumber(new Double(1),new Double(1),new Double(12), false);
         prevButton = new RaplaArrowButton('<', 28)
         {
             private static final long serialVersionUID = 1L;
-            
             public String getToolTipText(MouseEvent e) {
-                
-                return getString("minus1month");
+                return getI18n().format("month","-",timeShiftTimes.getNumber().intValue());
             }
             
             public Point getToolTipLocation(MouseEvent event) {
@@ -122,7 +123,7 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
             
             public String getToolTipText(MouseEvent e) {
                 
-                return getString("plus1month");
+                return getI18n().format("month","+",timeShiftTimes.getNumber().intValue());
             }
             
             public Point getToolTipLocation(MouseEvent event) {
@@ -163,20 +164,17 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         panel.add(optionsPanel,"7,0");
         
         // columns = 7, rows = 2
-        optionsPanel.setLayout( new TableLayout(new double[][] {{ pre, 5, pre, 5 , pre, 5, pre }, {10, pre }}));
+        optionsPanel.setLayout( new TableLayout(new double[][] {{ pre, 5, pre, 5 , pre, 5, pre, 5, pre, 5, pre }, {10, pre }}));
         
         timeShiftTimesLabel.setText(getString("horizon"));
         optionsPanel.add(timeShiftTimesLabel,"0,1,l,f");
-        timeShiftTimes = new RaplaNumber(new Double(1),new Double(0),new Double(12), false);
+        
         optionsPanel.add(timeShiftTimes,"2,1,f,f");
         timeShiftTimes.addChangeListener(listener);
-        timeShifts = getQuery().getPreferences(getUser()).getEntryAsInteger( OccupationOption.MONTHS,0);
+        timeShifts = getQuery().getPreferences(getUser()).getEntryAsInteger( OccupationOption.MONTHS,1);
         timeShiftTimes.setNumber(timeShifts);
-        
-        String startDay = getQuery().getPreferences(getUser()).getEntryAsString( OccupationOption.START_DAY,OccupationOption.TODAY);
-        isStartDayFirstDay = startDay.equals(OccupationOption.FIRSTDAY) ? true : false;
-        
-        freeSlotLabel.setText(getString("freeSlot"));
+                
+        freeSlotLabel.setText(getString("free"));
         optionsPanel.add(freeSlotLabel,"4,1,l,f");
         freeSlot = new RaplaNumber(new Double(0),new Double(0),new Double(99), false);
         optionsPanel.add(freeSlot,"6,1,f,f");
@@ -186,11 +184,17 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         
         dateSelection.addDateChangeListener( listener );
         todayButton.addActionListener(listener);
-        update();
+        
+        optionsPanel.add( new JLabel(getString("compact-columns")),"8,1,f,f"  );
+        optionsPanel.add( compactField,"10,1,f,f");
+        compactField.addActionListener( listener );
+        compactField.setSelected( getCalendarOptions().isCompactColumns() );
+
+        update(true);
     }
 
     boolean listenersEnabled = true;
-    public void update() throws RaplaException
+    public void update(boolean init) throws RaplaException
     {
         listenersEnabled = false;
         try {
@@ -198,9 +202,17 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
                 model.setSelectedDate( getQuery().today());
             }
             Date date = model.getSelectedDate();
-            String startDay = getQuery().getPreferences(getUser()).getEntryAsString( OccupationOption.START_DAY,OccupationOption.TODAY);
+            String startDay = getQuery().getPreferences(getUser()).getEntryAsString( OccupationOption.START_DAY,OccupationOption.NOSELECTION);
             isStartDayFirstDay = startDay.equals(OccupationOption.FIRSTDAY) ? true : false;
-            dateSelection.setDate( setStartOfMonth(date));
+            dateSelection.setDate( setStartOfMonth(date));  
+            if(init) {
+            	int timeShifts = getQuery().getPreferences(getUser()).getEntryAsInteger( OccupationOption.MONTHS,1);
+            	if(timeShifts == 0)
+            		timeShifts = 1;
+            	timeShiftTimes.setNumber(timeShifts);
+            	compactField.setSelected( getCalendarOptions().isCompactColumns() );
+            }
+
         } finally {
             listenersEnabled = true;
         }
@@ -257,8 +269,21 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         return panel;
     }
 
+
+    public boolean getCompact() {
+        return compactField.isSelected();
+    }
+
+    public int getFreeSlot() {
+        return freeSlot.getNumber().intValue();
+    }
+
     public Calendar getSelectedStartTime() {
         return toDateTime( dateSelection.getDate(), startTime.getTime()); 
+    }
+
+    public int getMonths() {
+    	return timeShiftTimes.getNumber().intValue();
     }
     
     public Calendar getSelectedEndTime() {
@@ -291,13 +316,20 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
     }
     
 	public Date setStartOfMonth(Date startDate) {
+        Calendar startCal = Calendar.getInstance();
+        startCal.setTime(startDate);
 	    if(isStartDayFirstDay) {
-	        Calendar cal = Calendar.getInstance();
-	        cal.setTime(startDate);
-	        cal.set(Calendar.DAY_OF_MONTH, 1);
-	        return cal.getTime();
+	    	startCal.set(Calendar.DAY_OF_MONTH, 1);
 	    }
-	    return startDate;
+	    // do not set model startDate and endDate as it influences other views.
+	    /*
+	    model.setStartDate(startCal.getTime());
+        Calendar endCal = (Calendar) startCal.clone();
+	    endCal.add(Calendar.MONTH, getMonths() - 1);
+	    endCal.set(Caleatendar.DAY_OF_MONTH, endCal.getActualMaximum(Calendar.DAY_OF_MONTH));
+	    model.setEndDate(endCal.getTime());
+	    */
+	    return startCal.getTime();
 	}
 
 
@@ -315,14 +347,18 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
 	            calendar.setTime(dateSelection.getDate());
 	
 	            if (evt.getSource() == prevButton)
-	            	calendar.add(incrementSize,-1);
+	            	calendar.add(incrementSize,- timeShiftTimes.getNumber().intValue());
 	            else
 	            	if (evt.getSource() == nextButton) 
-	            		calendar.add(incrementSize,1);	            
+	            		calendar.add(incrementSize,timeShiftTimes.getNumber().intValue());	    
 	            	else
 	            		if (evt.getSource() == todayButton)
 	            			calendar.setTime(new Date());
-	            date = calendar.getTime();	            
+		            	else 
+		            		if (evt.getSource() == compactField)
+		            			;
+	            date = calendar.getTime();	
+	            fireDateChange( date);
             } finally {
                 listenersEnabled = true;
             }

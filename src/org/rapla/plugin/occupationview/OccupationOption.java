@@ -34,18 +34,19 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
 	
 	public final static String MONTHS = "org.rapla.plugin.occupation.Months";
     JPanel panel = new JPanel();
-    RaplaNumber months = new RaplaNumber(new Double(1),new Double(0),new Double(12), false);
+    RaplaNumber months = new RaplaNumber(new Double(1),new Double(1),new Double(12), false);
+    RaplaNumber cleanupAge = new RaplaNumber(new Double(1),new Double(0),new Double(999), false);
 
     Preferences preferences;
     
 // BJO 00000101
 	public final static String START_DAY  = "org.rapla.plugin.occupation.StartDay";
     public final static String FIRSTDAY = "FirstDay";
-    public final static String TODAY = "ToDay";
-    JComboBox startDaySelector = new JComboBox( new String[] {
-    		  														  FIRSTDAY
-																	, TODAY
-																	}
+    public final static String NOSELECTION = "nothing_selected";
+    public final static String CLEANUP_AGE= "org.rapla.plugin.occupation.cleanup-age";
+    JComboBox startDaySelector = new JComboBox( new String[] {  NOSELECTION
+    		  												  , FIRSTDAY
+															 }
     );
 // BJO 00000101
     public OccupationOption(RaplaContext sm) throws RaplaException {
@@ -55,12 +56,12 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
 
     public void create() throws RaplaException {
     	
+        // rows = 3 columns = 5
         double pre = TableLayout.PREFERRED;
-        double fill = TableLayout.FILL;
         // rows = 1 columns = 2
         panel.setLayout( new TableLayout(new double[][] {
         												  {pre, 5, pre, 5, pre}
-        												, {pre, 5, pre, 5, fill}
+        												, {pre, 5, pre, 5, pre}
         												}
         ));
       
@@ -73,6 +74,9 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
         panel.add(startDaySelector,"2,2");
         startDaySelector.setRenderer( listRenderer );
 // BJO 00000101
+        panel.add( new JLabel(getString("cleanup-age")),"0,4"  );
+        panel.add( cleanupAge,"2,4");
+        panel.add( new JLabel(getString("days")),"4,4"); 
     }
 
     public JComponent getComponent() {
@@ -88,11 +92,11 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
     }
 
     public void show() throws RaplaException {
-        int times = preferences.getEntryAsInteger( MONTHS,0);
+        int times = preferences.getEntryAsInteger( MONTHS,1);
         months.setNumber(times);
         
-        String day = preferences.getEntryAsString( START_DAY, TODAY );
-        startDaySelector.setSelectedItem(  day.equals(FIRSTDAY) ? FIRSTDAY : TODAY );
+        String day = preferences.getEntryAsString( START_DAY, NOSELECTION );
+        startDaySelector.setSelectedItem(  day.equals(FIRSTDAY) ? FIRSTDAY : NOSELECTION );
         
         create();
     }

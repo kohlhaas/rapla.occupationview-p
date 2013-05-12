@@ -26,11 +26,18 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.print.PageFormat;
+import java.awt.print.Printable;
+import java.awt.print.PrinterException;
 import java.text.DateFormatSymbols;
 import java.text.DecimalFormat;
+import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -42,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TimeZone;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -61,12 +69,14 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
+import org.rapla.client.ClientService;
 import org.rapla.components.calendar.DateChangeEvent;
 import org.rapla.components.calendar.DateChangeListener;
 import org.rapla.components.tablesorter.TableSorter;
 import org.rapla.components.util.DateTools;
 import org.rapla.entities.Category;
 import org.rapla.entities.CategoryAnnotations;
+import org.rapla.entities.EntityNotFoundException;
 import org.rapla.entities.User;
 import org.rapla.entities.domain.Allocatable;
 import org.rapla.entities.domain.Appointment;
@@ -79,19 +89,23 @@ import org.rapla.entities.dynamictype.Classifiable;
 import org.rapla.entities.dynamictype.Classification;
 import org.rapla.entities.dynamictype.ClassificationFilter;
 import org.rapla.entities.dynamictype.ConstraintIds;
+import org.rapla.entities.dynamictype.DynamicTypeAnnotations;
 import org.rapla.facade.CalendarModel;
-import org.rapla.facade.CalendarOptions;
 import org.rapla.facade.CalendarSelectionModel;
 import org.rapla.facade.QueryModule;
-import org.rapla.facade.UpdateModule;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
+import org.rapla.framework.RaplaLocale;
 import org.rapla.gui.RaplaGUIComponent;
 import org.rapla.gui.SwingCalendarView;
 import org.rapla.gui.internal.action.AppointmentAction;
+import org.rapla.gui.internal.action.ReservationAction;
 import org.rapla.gui.toolkit.DialogUI;
+import org.rapla.gui.toolkit.RaplaColorList;
+import org.rapla.gui.toolkit.RaplaFrame;
 
-public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarView
+
+public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarView, Printable
 {
 
 	OccupationTableModel occupationTableModel;
@@ -102,36 +116,44 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
     boolean checkRestrictions=false;
     Appointment[] appointments;
-    Map<Appointment, Set<Allocatable>> appointmentMap = new HashMap();
+    //Map<Appointment, Set<Allocatable>> appointmentMap = new HashMap();
     User user;
     Reservation mutableReservation;
 
-    private boolean conflictingAppointments[]; // stores the temp conflicting appointments
-    private int conflictCount; // temp value for conflicts
-    private int permissionConflictCount; // temp value for conflicts that are the result of denied permissions
     int calendarShift = Calendar.MONTH;
-    Calendar calendarDS = getRaplaLocale().createCalendar();
-    Calendar calendarDE = getRaplaLocale().createCalendar();
     JPopupMenu popupMenu = new JPopupMenu();
     List<Allocatable> allocatableList=null;
    
     boolean coloredEvents = false;
-    RepeatingType repeatingType;
-    int repeatingDuration;
-    CalendarOptions options;
+    
+    String eventType=null;
+    
     AllocatableCellRenderer alcRenderer = new AllocatableCellRenderer();
     Locale locale = getLocale();
-    Date nullDate = new Date(-2208988800000L); // Initialize with 1900/01/01
-    int archiveAge = 0;
+    int cleanupAge = getQuery().getPreferences( null ).getEntryAsInteger(OccupationOption.CLEANUP_AGE, 32);
 	private DecimalFormat formatDaysInOut = new DecimalFormat("#");
 	Date today = getQuery().today();
-	
-	 TableSorter  sorter;
-		
+	int columnCount = 0;
+    QueryModule qry = getQuery();
+	 
+    TableSorter  sorter;
+   	private boolean isReadOnlyUser = true;
+
+	boolean isTableEditableTable=true;	
+    Set excludeDays = null;
+    Interval selectedInterval;
+    
+    RaplaLocale raplaLocale = getRaplaLocale();
+    TimeZone timezone = raplaLocale.getTimeZone();
+    Calendar calendarDS = raplaLocale.createCalendar();
+    Calendar calendarDE = raplaLocale.createCalendar();
+
     public SwingOccupation( RaplaContext context, final CalendarModel model, final boolean editable ) throws RaplaException
     {
         super( context ); 
         setChildBundleName( OccupationPlugin.RESOURCE_FILE);
+        isTableEditableTable = editable;
+        isReadOnlyUser = (!canCreateReservation());
         table = new JTable()
         {
             private static final long serialVersionUID = 1L;
@@ -144,48 +166,57 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
                 int c = columnAtPoint( evt.getPoint() );
                 if(c<OccupationTableModel.CALENDAR_EVENTS) // no menu on fixed columns
                 	return null;
+                               	
                 Object value = occupationTableModel.getValueAt(r, c);
                 if(value instanceof OccupationCell) {
                 	OccupationCell occCell = (OccupationCell) value;
-                	final Reservation reservation = occCell.getReservation();
-                    if(reservation != null) {
-                        Appointment[] app = reservation.getAppointments();
-                        return getInfoFactory().getToolTip( app[0] );
+                	final Appointment appointment = occCell.getAppointment(); 
+                    if(occCell.getTypeId() == OccupationCell.OCCUPIED || occCell.getTypeId() == OccupationCell.CONFLICT) {
+                        if(appointment != null) 
+                        	return getInfoFactory().getToolTip( appointment );
 		        	}
-                	if(occCell.getTypeId() == -1 ) {
-					        AllocationCell alcCell = (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE);
-	            	    	Allocatable alloc = alcCell.allocatable;
-							Classification classification = alloc.getClassification();
-							return classification.getType().getName(locale) + ":" + alloc.getName(locale)+ " " + getString("not_selectable");
+                	if(occCell.getTypeId() == OccupationCell.FILTERED) {
+							return getString( "not_selected.help" );
+					}
+                	if(occCell.getTypeId() == OccupationCell.FORBIDDEN) {
+							return getString("forbidden");
+                	}
+		            if(occCell.getTypeId() == OccupationCell.FREE) {
+		                if(excludeDays.size() != 0)
+		                	return getString("excludedaysactive");
+		                else
+							return getString("free");
 					}
                 }
                 return null;
             }
-            
+            /*
             public Point getToolTipLocation(MouseEvent evt) {
 
-            	return new Point(0, rowAtPoint( evt.getPoint() ) * getRowHeight());
+            	return new Point(getRowHeight(), rowAtPoint( evt.getPoint() ) * getRowHeight());
 
               }
+              */
         };
-        
-        
-        archiveAge = getClientFacade().getPreferences(null).getEntryAsInteger(UpdateModule.ARCHIVE_AGE, 31);
-        		
+               		
 		TableCellRenderer	renderer = new OccupationTableCellRenderer();
 			    
 		table.setDefaultRenderer( Object.class, renderer );
-
+        container = new JScrollPane( table);
         if ( editable )
         {
-            container = new JScrollPane( table);
             container.setPreferredSize( new Dimension(600,800));
+            PopupTableHandler popupHandler = new PopupTableHandler();
+            container.addMouseListener( popupHandler);;
+            table.addMouseListener( popupHandler );
         }
         else
         {
-            container = table;
         	Dimension size = table.getPreferredSize();
-            container.setBounds( 0,0,(int)600, (int)size.getHeight());
+            container.setBounds( 0,0,(int)6000, (int)size.getHeight());
+            PopupTableHandler popupHandler = new PopupTableHandler();
+            container.addMouseListener( popupHandler);;
+            table.addMouseListener( popupHandler );
         }
         this.model = (CalendarSelectionModel) model;
        
@@ -197,17 +228,29 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         table.getTableHeader().setReorderingAllowed(false); // no column reordering 
         table.setColumnModel(new GroupableTableColumnModel());
         table.setTableHeader(new GroupableTableHeader((GroupableTableColumnModel)table.getColumnModel()));
+        table.setRowHeight(25);   
+        //table.getColumnModel().getColumn( int column ).setWidth( int width );  
        
-        if ( editable ) {
-            PopupTableHandler popupHandler = new PopupTableHandler();
-            container.addMouseListener( popupHandler);
-            table.addMouseListener( popupHandler );
-        }
+        MouseMotionAdapter mma;
+        mma = new MouseMotionAdapter ()
+        {
+          public void mouseMoved (MouseEvent e)
+          {
+            Point p = e.getPoint ();
+            if (table.columnAtPoint (p) ==table.getSelectedColumn() &&  table.rowAtPoint (p) == table.getSelectedRow())
+              table.setCursor (Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            else
+              table.setCursor (Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+        };
+
+        table.addMouseMotionListener (mma);
 
         //model.setStartDate(null); // null = today()
         timeShift = new TimeShiftPanel( context, model);
         timeShift.setIncrementSize(calendarShift); // increment 1 Month 
         this.user = getUser();
+        
         timeShift.addDateChangeListener( new DateChangeListener() {
             public void dateChanged( DateChangeEvent evt )
             {
@@ -219,67 +262,62 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             }
         });
         
-        // get default user preferences from user profile
-        options = getCalendarOptions();
-    	repeatingType = options.getRepeatingType();
-    	repeatingDuration = options.getDefaultRepeatingDuration(); // -1:infinite; >0:=n-times
-        //update();
+        update();
     }
 
-
+    
     public void update() throws RaplaException
     {
-    	try {
-    			container.getTopLevelAncestor().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-    			updatetable();
+    	RaplaFrame frame = (RaplaFrame) getService( ClientService.MAIN_COMPONENT );
+    	try {			
+    			frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    			//long start = System.currentTimeMillis();   			 
+    			updateIt();
+   			 	//System.out.println("1- time taken : " + (System.currentTimeMillis() - start) + " msec.");
     		} finally {
-    			container.getTopLevelAncestor().setCursor(Cursor.getDefaultCursor());
+    			frame.setCursor(Cursor.getDefaultCursor());
     		}
     }
-    
-    public void updatetable() throws RaplaException
+   
+    public void updateIt() throws RaplaException
     {  
-    	timeShift.update();
-    	int timeShiftTimes = timeShift.timeShiftTimes.getNumber().intValue() + 1;
+		((JScrollPane)container).getVerticalScrollBar().setValue(0);
+		((JScrollPane)container).getHorizontalScrollBar().setValue(0);
+        // get default user preferences from user profile
+    	
+        excludeDays = getCalendarOptions().getExcludeDays();  	
+    	eventType = getReservationOptions().getEventType();
+        try {
+        	getClientFacade().getDynamicType(eventType);
+        } catch (EntityNotFoundException ex) {
+        	eventType = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0].getElementKey();
+        }	
+     	
+    	timeShift.update(false);
+    	int months = timeShift.getMonths();
         
-        ClassificationFilter[] cfilters  = model.getReservationFilter();
-        if(cfilters.length>1) {
-        	DialogUI dialog = DialogUI.create(
-                        						 getContext()
-                        						,container.getTopLevelAncestor()
-                        						,true
-                        						,getString("warning")
-                        						,getString("warning.max-one-eventtype")
-                        						,new String[] { getString("continue") }
-            								 );
-            dialog.setIcon(getIcon("icon.warning"));
-            dialog.setDefault(0);
-            dialog.start();
-            return;
-        }
-    	mutableReservation = getClientFacade().newReservation();
-        Appointment appointment = getClientFacade().newAppointment( model.getSelectedDate(), model.getSelectedDate());
-        mutableReservation.addAppointment(appointment);
-        appointments = mutableReservation.getAppointments();
+        ClassificationFilter[] cfilters = model.getReservationFilter();
         allocatableList = getAllAllocatables();
         Collections.sort(allocatableList, new AllocatableSortByName());
         int rowCount = allocatableList.size();
+        if(rowCount == 0)
+        	return;
         Iterator<Allocatable> it = allocatableList.iterator();
         calendarDS = timeShift.getSelectedStartTime(); // start midnight
         calendarDE = timeShift.getSelectedEndTime(); // end midnight
-        
-          
+    	//System.out.println("Selected - Start: " + calendarDS.getTime() + " Stop: " + calendarDE.getTime());
+
         // calculate number of columns required to display from calendar
         Calendar calendarTmp = (Calendar) calendarDS.clone();
         int totalDays= -1 * calendarTmp.get(Calendar.DAY_OF_MONTH) + 1;
-        for ( int i = 0; i< timeShiftTimes; i++) {
+        for ( int i = 0; i< months; i++) {
         	totalDays += calendarTmp.getActualMaximum(Calendar.DAY_OF_MONTH);
         	calendarTmp.add(calendarShift, 1);
         }
         int columnCount = totalDays + OccupationTableModel.CALENDAR_EVENTS ; // + for fixed columns
         //Object occupationTable[][] = new Object[rowCount][columnCount]; 
         occupationTableModel = new OccupationTableModel(getI18n(), rowCount, columnCount, calendarDS.getTime());
-       
+     
         
 // Sorting block
 
@@ -317,74 +355,113 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		
 		//table.setRowSorter(sorter);
 		
-		table.setModel(  sorter );
-        
-		table.getColumnModel().getColumn(OccupationTableModel.CALENDAR_CHECK).setCellRenderer(alcRenderer);
         int r = 0;
         char leftBound = ' ';
         char rightBound = ' ';
-        while (it.hasNext()) {
+        // long start0 = System.currentTimeMillis(); 
+        while (it.hasNext()) { 
         	
         	// get resource data
     		Allocatable alloc = it.next();
     		AllocationCell alcCell = new AllocationCell(alloc);
-    		occupationTableModel.setValueAt( alcCell, r, OccupationTableModel.CALENDAR_RESOURCE);
     		
     		// get reservation data
             Calendar calendarTDS = (Calendar) calendarDS.clone();
             Calendar calendarTDE = (Calendar) calendarDE.clone();
-            mutableReservation.addAllocatable(alloc);
-            String occupationType = null;
-            QueryModule qry = getQuery();
-        	for ( int c = OccupationTableModel.CALENDAR_EVENTS ; c <= (columnCount - 1); c++) {
+			
+    		occupationTableModel.setValueAt( alcCell, r, OccupationTableModel.CALENDAR_RESOURCE);
+            //mutableReservation.addAllocatable(alloc);
+            //String occupationType = null;
+            occupationTableModel.setColumnCount(OccupationTableModel.CALENDAR_OUT_DAYS);
+            //long start1 = System.currentTimeMillis(); 
+            //Reservation previousReservation = null;
+        	for ( int k = OccupationTableModel.CALENDAR_EVENTS ; k <= columnCount-1; k++) {
+                //long start = System.currentTimeMillis(); 
+        		
+        		if ( excludeDays.contains(calendarTDS.get(Calendar.DAY_OF_WEEK)))  {
+        			calendarTDS.add(Calendar.DATE, 1); // next startday
+        			calendarTDE.add(Calendar.DATE, 1); // next endday
+        			continue;
+        		}
+        		int c = occupationTableModel.addColumn(1);
         		sorter.setSortable(c, false);
         		if(DateTools.cutDate(today).equals(DateTools.cutDate(calendarTDS.getTime())))
         			occupationTableModel.setTodayColumn(c);
-        		appointment.move(calendarTDS.getTime(),calendarTDE.getTime());
-                updateBindings(appointments);  
-        		occupationType = getOccupationType((Allocatable) alloc);
-        		//occupationTableModel.setValueAt( null, r, OccupationTableModel.CALENDAR_IN_DAYS);
-        		if(occupationType.equals("C")) { // Conflict
-        			// Not Free
-        			Reservation [] res = qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS.getTime(),calendarTDE.getTime(), cfilters);
-        			if(res.length==0) {
-                        OccupationCell occCell = new OccupationCell('N',0,'N', null);
-                		occupationTableModel.setValueAt( occCell, r, c);
-        			}
-        			else { // Not Free
-        				//  A from-to will be split is days like [ [, ] [ , ] [, ] ] [ left boundary = startdate, ] right boundary = enddate
-        				//   ] and [ used in the middle.
-	                    Reservation reservation = res[0];
-	                    Appointment[] apps = reservation.getAppointmentsFor(alloc);
-	                    Appointment app = apps[0];
+    			// Not Free
+		    	Collection<Reservation> filteredReservations = null;
+		        if((cfilters != null))
+		        	filteredReservations = new HashSet<Reservation>(Arrays.asList(qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS.getTime(),calendarTDE.getTime(), cfilters)));
+    			Reservation[] reservationDay = qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS.getTime(),calendarTDE.getTime(), null);
+				//  A from-to will be split is days like [ [ or ] [ or ] [ or ] ] "[" is left boundary = startdate, "]" is right boundary = enddate
+				//   ] and [ used in the middle.
+				// System.out.println("Name: " + alloc.getName(locale) + "Start: " + calendarTDS.getTime() + " Stop: " + calendarTDE.getTime());
+                Reservation reservation = null;
+                Appointment app = null;
+                //long start = System.currentTimeMillis(); 
+        		occupationTableModel.setValueAt( new OccupationCell('N',OccupationCell.FREE,'N', null), r, c); // initialize to FREE
+                for(int j=0;j < reservationDay.length;j++) {
+                	reservation = reservationDay[j];
+                    app = null;
+                    Appointment[] apps = reservation.getAppointmentsFor(alloc);
+                    for(int i=0;i < apps.length;i++) {
+                    	app = apps[i];	
+                    	if(!app.overlaps(calendarTDS.getTime(), calendarTDE.getTime()))
+                    		continue;
 	                    //System.out.println(alloc.getName(locale));
-	                    //System.out.println("Start= " + app.getStart() + " TDS= " + calendarTDS.getTime()); 
-	                    Date minStartDate = app.getStart();
-	                    if(DateTools.isSameDay(minStartDate.getTime(),calendarTDS.getTime().getTime()))
-	                    	if(DateTools.isMidnight(minStartDate))
-	                    		leftBound = '[';
-	                    	else
-	                    		leftBound = '<';
-	                    else
-	                    	if(DateTools.isMidnight(minStartDate))
-	                    		leftBound = ']';
-	                    	else
-	                    		leftBound = '>';
-	                    //Repeating rep = app[0].getRepeating();
-	                    //if (rep != null) System.out.println("Repating= " + rep);             
-	                    //System.out.println("MaxEnd = " + app.getMaxEnd() + " End= " + app.getEnd()); 
-	                    Date maxendDate = app.getMaxEnd();
-	            		rightBound = '[';
-	                    if(maxendDate!=null)
-	                    	if(DateTools.isMidnight(maxendDate)) { // endDate 00:00:00 = previous date
-	                    		if(DateTools.isSameDay((DateTools.subDay(maxendDate)).getTime(),calendarTDS.getTime().getTime()))
-	                    			rightBound = ']';
-	                    	}
-	                    	else
-		                    	if(DateTools.isSameDay(maxendDate.getTime(),calendarTDS.getTime().getTime()))
-		                    		rightBound = '>';	                    			           
-	                    OccupationCell occCell = new OccupationCell(leftBound,1,rightBound, reservation);
-	            		occupationTableModel.setValueAt( occCell, r, c);
+	                    //System.out.println("Start= " + app.getStart() + " TDS= " + calendarTDS.getTime());
+                    	if(excludeDays.size() == 0 ) {
+                    		Date minStartDate = app.getStart();
+		                    if(DateTools.isSameDay(minStartDate.getTime(),calendarTDS.getTime().getTime()))
+		                    	if(DateTools.isMidnight(minStartDate))
+		                    		leftBound = '[';
+		                    	else
+		                    		leftBound = '<';
+		                    else
+		                    	if(DateTools.isMidnight(minStartDate))
+		                    		leftBound = ']';
+		                    	else
+		                    		leftBound = '>';
+		                    //Repeating rep = app[0].getRepeating();
+		                    //if (rep != null) System.out.println("Repating= " + rep);             
+		                    //System.out.println("MaxEnd = " + app.getMaxEnd() + " End= " + app.getEnd()); 
+		                    Date maxendDate = app.getMaxEnd();
+		            		rightBound = '[';
+		                    if(maxendDate!=null)
+		                    	if(DateTools.isMidnight(maxendDate)) { // endDate 00:00:00 = previous date
+		                    		if(DateTools.isSameDay((DateTools.subDay(maxendDate)).getTime(),calendarTDS.getTime().getTime()))
+		                    			rightBound = ']';
+		                    	}
+		                    	else
+			                    	if(DateTools.isSameDay(maxendDate.getTime(),calendarTDS.getTime().getTime()))
+			                    		rightBound = '>';	                    			           
+                    	}
+                    	else {
+                			leftBound  = ']';
+                			rightBound = '[';
+                    	}	
+                    	OccupationCell occCellOld = (OccupationCell) occupationTableModel.getValueAt(r, c);
+                    	if( occCellOld == null || occCellOld.getTypeId() == OccupationCell.FREE) {
+                    		occCellOld.leftBound = leftBound;
+                    		occCellOld.rightBound = rightBound;
+                    		occCellOld.setObject(app);
+                    		occCellOld.setTypeId(OccupationCell.OCCUPIED);
+                    		Repeating repeating = app.getRepeating();
+                    		if(repeating != null)
+                    			if(repeating.isException(calendarTDS.getTime().getTime()))
+                    				occCellOld.setTypeId(OccupationCell.EXCEPTION);
+                    		//occupationTableModel.setValueAt( occCellOld, r, c);
+                    	}
+                    	else {
+                    		if(app.overlaps(occCellOld.getAppointment()))
+                    				occCellOld.setTypeId(OccupationCell.CONFLICT);
+		            		//occupationTableModel.setValueAt( occCellOld, r, c);
+                    	}
+                    	
+                    	boolean isEventSelected = filteredReservations.contains(reservation);
+    			    	if(!isEventSelected) {
+    			    		occCellOld.setTypeId(OccupationCell.FILTERED);
+    			    	}	                    	
+	            		
 	            		if(c == occupationTableModel.getTodayColumn())
 	            			setDaysInOut(app, r, today);
 	            		else
@@ -392,29 +469,9 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	            				setDaysInOut(app, r, calendarTDS.getTime());
 	            		
 	        			//System.out.println(res[0].toString() + " Length:" + res.length);
-	        		}
-        		}
-        		else
-	        		if(occupationType.equals(" ")) { // Free
-	                    OccupationCell occCell = new OccupationCell('N',0,'N');
-	            		occupationTableModel.setValueAt( occCell, r, c);
-	            		
-	            		// calculate archive date
-                		Date startDate = DateTools.subDays(today, archiveAge);
-                		Reservation [] res = getQuery().getReservationsForAllocatable(new Allocatable[] { alloc },startDate,today, null);
-                		if(res.length != 0) {
-        	                Appointment[] apps = res[res.length - 1].getAppointments();
-        	                Appointment app = apps[0];
-        	                if ( c == occupationTableModel.getTodayColumn())
-        	                	setDaysInOut(app, r, today);
-        	            }
-        	            
-	        		}
-	        		else 
-	        			if(occupationType.equals("F")) { // Forbidden Resource is not available at all, out of order or in maintenance
-	        				OccupationCell occCell = new OccupationCell('N',-1,'N');
-	        				occupationTableModel.setValueAt( occCell, r, c);
-	        			}
+                    }
+                }
+                //System.out.println("2- time taken : " + (System.currentTimeMillis() - start) + " msec.");
         		/* debug
         		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 String DS = sdf.format(calendarTDS.getTime());
@@ -424,17 +481,47 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         		calendarTDS.add(Calendar.DATE, 1); // next startday
                 calendarTDE.add(Calendar.DATE, 1); // next endday
         	}
-           r++;
+            occupationTableModel.addColumn(1); // adjust count +1
+        	// Compress ?
+        	if( timeShift.getCompact() ) {
+	        	boolean allfree = true; 
+	        	for ( int k = OccupationTableModel.CALENDAR_EVENTS ; k <= columnCount-1; k++) {
+	        		//System.out.println("Count:" + columnCount + "Row:" + r + " Column:" + k);
+	        		if(occupationTableModel.getValueAt(r, k) != null) {
+	        			int type = ((OccupationCell) occupationTableModel.getValueAt(r, k)).getTypeId();
+	        			if(type != OccupationCell.FREE && type != OccupationCell.FILTERED) {
+	        				allfree = false;
+	        				break;
+	        			}
+	        		}
+	        	}
+	        	
+	        	if(allfree)
+	        		continue; // next Allocatable
+        	}
+    		occupationTableModel.addRow(1);
+            r++;
+
+            //System.out.println("End Resource time taken : " + (System.currentTimeMillis() - start1) + " msec.");
         }
+        // System.out.println("End All Resources time taken : " + (System.currentTimeMillis() - start0) + " msec.");
+        table.setModel(  sorter );
         
-        occupationTableModel.setFreeSlot(timeShift.freeSlot.getNumber().intValue());
+		table.getColumnModel().getColumn(OccupationTableModel.CALENDAR_CHECK).setCellRenderer(alcRenderer);
+
+        occupationTableModel.setFreeSlot(timeShift.getFreeSlot());
         //setLineNumbers();
 
         occupationTableModel.firstFit();
 
-    	TableColumnModel cm = table.getColumnModel();
+        
+        // Any rows found ? Compact may have removed all rows
+        //if(occupationTableModel.getRowCount() == 0) 
+        	//return;
+        
+        TableColumnModel cm = table.getColumnModel();
     	
-    	// Resource column Header
+    	// Sequence line number
         TableColumn column = cm.getColumn(OccupationTableModel.CALENDAR_SEQUENCE_NUMBER);
         column.setPreferredWidth(30); 
         column.setMaxWidth(50);
@@ -444,73 +531,96 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         column.setPreferredWidth(200); 
         column.setMaxWidth(300);
         
-        // In column Header 
+        // 
         column = cm.getColumn(OccupationTableModel.CALENDAR_CHECK); 
         column.setPreferredWidth(200); 
         column.setMaxWidth(300);
 
-        // Out column Header 
+        // In column Header 
         column = cm.getColumn(OccupationTableModel.CALENDAR_IN_DAYS); 
         column.setPreferredWidth(40); 
         column.setMaxWidth(50);
 
-        // Sequence line number
+        // Out column Header 
         column = cm.getColumn(OccupationTableModel.CALENDAR_OUT_DAYS); 
         column.setPreferredWidth(40);
         column.setMaxWidth(50);
         
         calendarTmp = (Calendar) calendarDS.clone();
-        SimpleDateFormat sdfMM = new SimpleDateFormat("MM",locale);
-    	sdfMM.setTimeZone(DateTools.getTimeZone());
+        SimpleDateFormat sdfYYYYMM = new SimpleDateFormat("yyyy/MM",locale);
+    	sdfYYYYMM.setTimeZone(DateTools.getTimeZone());
         SimpleDateFormat sdfdd = new SimpleDateFormat("dd",locale);
     	sdfdd.setTimeZone(DateTools.getTimeZone());
+        SimpleDateFormat sdfww = new SimpleDateFormat("ww",locale);
+    	sdfdd.setTimeZone(DateTools.getTimeZone());
+
         //SimpleDateFormat sdfEE  = new SimpleDateFormat("EE",locale);
     	//sdfEE.setTimeZone(DateTools.getTimeZone());
     	GroupableTableColumnModel gcm = (GroupableTableColumnModel)table.getColumnModel();
-    	String oldMM=null; // old month groupHeader label
-    	String newMM=null; // new month groupHeader label
-    	ColumnGroup g_MM = null;
-    	for ( int i = OccupationTableModel.CALENDAR_EVENTS ; i <= (columnCount - 1); i++) {
+    	String oldGR=null; // old month groupHeader label
+    	String newGR=null; // new month groupHeader label
+    	ColumnGroup g_GR = null;
+    	int k = 0 ;
+    	for ( int i = OccupationTableModel.CALENDAR_EVENTS ; i <= columnCount-1; i++) {
     		
     		Date dateTmp = calendarTmp.getTime();
-            int day = calendarTmp.get(Calendar.DAY_OF_WEEK);
+    		int day = calendarTmp.get(Calendar.DAY_OF_WEEK);
             
-            newMM = sdfMM.format(dateTmp);
-            //set columnGroupHeader label == MM (Month) 01, , 12
-            if(!newMM.equals(oldMM)) {
-            	if(oldMM!=null)
-            		gcm.addColumnGroup(g_MM);
-            	g_MM = new ColumnGroup(new GroupableTableCellRenderer(),newMM);
-            	oldMM = newMM;
+    		if ( excludeDays.contains( day ) ) {
+    			calendarTmp.add(Calendar.DATE, 1); // next startday
+    			k++; 
+    			continue;
+    		}
+            if(excludeDays.size() == 0 )
+                //set columnGroupHeader label == YYYY/MM (Month) 01, ... , 12
+                newGR = sdfYYYYMM.format(dateTmp);
+            else 
+                //set columnGroupHeader label == WW (Week) 01, ... , 52
+                newGR = 'w' + sdfww.format(dateTmp);
+
+            if(!newGR.equals(oldGR)) {
+            	if(oldGR!=null)
+            		gcm.addColumnGroup(g_GR);
+            	g_GR = new ColumnGroup(new GroupableTableCellRenderer(),newGR);
+            	oldGR = newGR;
             }
             //set columnGroupHeader label == dd (Day) 01, ...,31
-            ColumnGroup g_dd = new ColumnGroup(new GroupableTableCellRenderer(), sdfdd.format(dateTmp));
-            g_MM.add(g_dd);
-            ColumnGroup g_dw = new ColumnGroup(new DayOfWeekHeaderRenderer(), Integer.toString(day));
+            ColumnGroup g_dd = new ColumnGroup(new GroupableTableCellRenderer(), sdfdd.format(dateTmp));  // daynumber
+            g_GR.add(g_dd);
+            
+            String tag = "";
+            if((i-k) == occupationTableModel.getTodayColumn())
+            	tag = "ToDay";
+            ColumnGroup g_dw = new ColumnGroup(new DayOfWeekHeaderRenderer(tag), Integer.toString(day)); //  day of week in words
             g_dd.add(g_dw);
-            column = cm.getColumn(i);
-            g_dw.add(column);
+            
+            //System.out.println("Day= " + sdfdd.format(dateTmp) + " colCount=" + columnCount + " i= " + i +" k= " + k + "i-k=" +(i-k) + "getColCount= " + occupationTableModel.getColumnCount());
+           	column = cm.getColumn(i - k);
+           	g_dw.add(column);
             
             // set column sizes
             column.setMinWidth(19);
             column.setMaxWidth(26);
             column.setPreferredWidth(26);
             //set columnHeader label == Day of the week  Mo, .... , Su
-            int  selectedCount = occupationTableModel.getSelectedRows(i);
+            int  selectedCount = occupationTableModel.getRowCount(i - k);
             column.setHeaderValue(selectedCount);
            	column.setHeaderRenderer(new countRenderer());
             calendarTmp.add(Calendar.DATE,1);
     	}
-        gcm.addColumnGroup(g_MM);
+        gcm.addColumnGroup(g_GR); // do not forget to add last group
     }
     
     public void setDaysInOut(Appointment app, int r, Date referenceDate) {
 
-    	if(referenceDate.before(today))
+    	if(referenceDate.before(today)) {
+    		occupationTableModel.setValueAt(null, r, OccupationTableModel.CALENDAR_OUT_DAYS);
+    		occupationTableModel.setValueAt(null, r, OccupationTableModel.CALENDAR_IN_DAYS);
     		return;
+    	}
     	else 
     		if(referenceDate.after(today))
-    			if((Integer) occupationTableModel.getValueAt(r,OccupationTableModel.CALENDAR_IN_DAYS) != Integer.MAX_VALUE)
+    			if(occupationTableModel.getValueAt(r,OccupationTableModel.CALENDAR_IN_DAYS) == null)
     				return;
     	
 	    int days = (int) ((app.getStart().getTime() -  today.getTime()) / DateTools.MILLISECONDS_PER_DAY);
@@ -529,10 +639,12 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		if(edate == null)
 			occupationTableModel.setValueAt(null, r, OccupationTableModel.CALENDAR_OUT_DAYS);
 		else {
-			days = (int) ((edate.getTime() -  today.getTime()) / DateTools.MILLISECONDS_PER_DAY);
-			occupationTableModel.setValueAt( days, r, OccupationTableModel.CALENDAR_OUT_DAYS);
+			days = (int) ((edate.getTime() -  today.getTime() + 1) / DateTools.MILLISECONDS_PER_DAY);
+			if(days> 20000)
+				occupationTableModel.setValueAt( "+\u221E", r, OccupationTableModel.CALENDAR_OUT_DAYS);
+			else
+				occupationTableModel.setValueAt( days, r, OccupationTableModel.CALENDAR_OUT_DAYS);
 		}
-    	
 		return;
 	}
        
@@ -543,12 +655,16 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
     public void scrollToStart()
     {
+    	/*
     	try {
-			update();
+    		scrolling = true;
+			//update();
+			scrolling = false;
 		} catch (RaplaException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		*/
     }
 
     public JComponent getComponent()
@@ -558,163 +674,92 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
     private List<Allocatable> getAllAllocatables() throws RaplaException {
 	    Allocatable[] allocatables = model.getSelectedAllocatables();
-	    return getAllocatableList( allocatables);
+	    return Arrays.asList( allocatables );
 	 }
-   
-    private List<Allocatable> getAllocatableList(Allocatable[] allocatables) {
-        List<Allocatable> result = Arrays.asList( allocatables );
-        return result;
-    }
-    
-    private void updateBindings(Appointment[] appointments) {
-            //      System.out.println("getting allocated resources");
-        try {
-
-            	for (int i=0;i<appointments.length;i++) {
-            		Appointment appointment = appointments[i];
-            		Set<Allocatable> allocatables = new HashSet(Arrays.asList(getQuery().getAllocatableBindings(appointment)));
-            		appointmentMap.put(appointment,allocatables);
-            	}
-        	} 
-        		catch (RaplaException ex) {
-        			showException(ex,table);
-        		}
-    }
-
-    private String getOccupationType(Allocatable allocatable) {
-        calcConflictingAppointments( allocatable );
-        if ( conflictCount == 0 ) {
-            return " ";
-        } else 
-        	if ( conflictCount == appointments.length ) {
-        		if ( conflictCount == permissionConflictCount ) {
-               		if (!checkRestrictions) {
-               			return "F"; //forbiddenIcon;
-               		}
-               	} else {
-               		return "C"; //conflictIcon;
-               	}
-        	} else 
-        		if ( !checkRestrictions ) {
-        			return "X";
-        		}
-        for ( int i = 0 ; i < appointments.length; i++ ) {
-            Appointment appointment = appointments[i];
-            if ( mutableReservation.hasAllocated( allocatable, appointment ) && !getQuery().hasPermissionToAllocate( appointment,allocatable )) 
-                return "F"; //forbiddenIcon;           
-        }
-        
-        if ( permissionConflictCount - conflictCount == 0 ) {
-            return " ";
-        }
-        
-        Appointment[] restriction = mutableReservation.getRestriction(allocatable);
-        if ( restriction.length == 0 ) {
-            return "C"; //conflictIcon;
-        } else {
-            boolean conflict = false;
-            for (int i = 0 ;i < restriction.length;i++) {
-                Set allocatables = (Set)appointmentMap.get( restriction[i]);
-                if (allocatables.contains(allocatable)) {
-                    conflict = true;
-                    break;
-                }
-            }
-            if ( conflict )
-                return "C"; // conflictIcon;
-            else
-                return "X"; // "X" not allways available
-        }
-    }
-
-    // calculates the number of conflicting appointments for this allocatable
-    private void calcConflictingAppointments(Allocatable allocatable) {
-    	if (conflictingAppointments == null || conflictingAppointments.length!=appointments.length)
-    		conflictingAppointments = new boolean[appointments.length];
-    	conflictCount = 0;
-    	permissionConflictCount = 0;
-    	for (int i=0;i<appointments.length;i++) {
-    		Set allocatables = (Set) appointmentMap.get(appointments[i]);
-    		if (allocatables != null && allocatables.contains(allocatable))
-    		{
-    			conflictingAppointments[i] = true;
-    			conflictCount ++;
-    		} 
-    		else
-    			if (!isAllowed( allocatable, appointments[i] ) ) {
-    				conflictingAppointments[i] = true;
-    				conflictCount ++;
-    				permissionConflictCount ++;
-    			} 
-    			else
-    			{
-    				conflictingAppointments[i] = false;
-    			}
-    	}
-    }
-
-    // returns if the user is allowed to allocate the passed allocatable
-    private boolean isAllowed( Allocatable allocatable, Appointment appointment ) {
-    	Date start = appointment.getStart();
-    	Date end = appointment.getMaxEnd();
-    	return allocatable.canAllocate(user, start, end, today );
-    }
-    
+       
     public class OccupationTableCellRenderer extends DefaultTableCellRenderer 
     {
 		private static final long serialVersionUID = 1L;
+		
+		public OccupationTableCellRenderer () {
+			super();
+		}
 
 		public Component getTableCellRendererComponent (JTable table, Object value, boolean isSelected, boolean hasFocus, int r, int c) 
         {
+
             Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, r, c);
 			int row = convertRowIndexToModel(table, r);		
-            super.setHorizontalAlignment(SwingConstants.LEFT);
+            super.setHorizontalAlignment(SwingConstants.CENTER);
 
             LinesBorder cellBorder = new LinesBorder(Color.BLACK); 
             cell.setBackground( Color.WHITE );
            
 	        if( value instanceof OccupationCell ) {
 	        	OccupationCell occCell = (OccupationCell) value;
-	        	final Reservation reservation = occCell.getReservation();
-	        	if( reservation != null ) {
-		            cellBorder.setThickness(2, NORTH);
-	    	        
-
-	        		if(occCell.leftBound=='[')
-	        			cellBorder.setThickness(2, WEST);
+	        	final Appointment appointment = occCell.getAppointment();
+	        	
+	        	int thickness = 2;
+	        	if(occCell.getTypeId() == OccupationCell.FILTERED)
+	        		thickness = 1;
+	        		
+	        	if( appointment != null ) {
+		            cellBorder.setThickness(thickness, NORTH);
+	        		if(occCell.leftBound=='[') {
+	        			cellBorder.setThickness(thickness, WEST);
+	        			//cellBorder.setColor(Color.LIGHT_GRAY, WEST);
+	        		}
 	        		else 
-	        			if(occCell.leftBound=='<')
-	        				cellBorder.setThickness(10, WEST);
+	        			if(occCell.leftBound=='<') {
+	        				Calendar calendar = Calendar.getInstance();
+	        				calendar.setTime(appointment.getStart());
+	        				cellBorder.setThickness(calendar.get(Calendar.HOUR_OF_DAY), WEST); 
+	        				cellBorder.setColor(Color.LIGHT_GRAY, WEST);
+	        			}
 	        			else
 	        				cellBorder.setThickness(0, WEST);
 	    	        
-	        		if(occCell.rightBound==']')
-	        			cellBorder.setThickness(2, EAST);
+	        		if(occCell.rightBound==']') {
+	        			cellBorder.setThickness(thickness, EAST);
+						//cellBorder.setColor(Color.LIGHT_GRAY, EAST);
+	        		}
 	        		else 
-	        			if(occCell.rightBound=='>')
-	        				cellBorder.setThickness(10, EAST);
+	        			if(occCell.rightBound=='>') {
+	        				Calendar calendar = Calendar.getInstance();
+	        				calendar.setTime(appointment.getEnd());
+	        				cellBorder.setThickness(24 - calendar.get(Calendar.HOUR_OF_DAY), EAST); 
+    						cellBorder.setColor(Color.LIGHT_GRAY, EAST);
+	        			}
 	        			else
 	            			cellBorder.setThickness(0, EAST);
 	        		
-	    	        cellBorder.setThickness(2, SOUTH);
+	    	        cellBorder.setThickness(thickness, SOUTH);
 
-	        		Color color = getColorForClassifiable( reservation );
+	        		Color color = getColorForClassifiable( appointment.getReservation() );
 	    	       	if(color==null)
 	           			cell.setBackground( Color.WHITE );
-	           		else
-	           			cell.setBackground( color);
+	           		else {
+	           			if(occCell.getTypeId() == OccupationCell.OCCUPIED)
+	           				cell.setBackground( color);
+	           			if(occCell.getTypeId() == OccupationCell.FILTERED) { 
+	           				cell.setBackground( adjustColor(  RaplaColorList.getHexForColor(color), 60 ));
+	    	           	if(occCell.getTypeId() == OccupationCell.CONFLICT)
+	    	           		cell.setBackground( color);
+
+	           			}
+	           		}
 	       			setBorder(cellBorder);
 	        	}
 	           	else
-		           	if( occCell.getTypeId() == 0) { // Free 
+		           	if( occCell.getTypeId() == OccupationCell.FREE) { // Free 
 		           		cell.setBackground( Color.LIGHT_GRAY);
 		            }
 		           	else 
-		           		if( occCell.getTypeId() == -1) { // Forbidden
+		           		if( occCell.getTypeId() == OccupationCell.FORBIDDEN) { // Forbidden
 		           			cell.setBackground( Color.BLACK );	                    
 		           		}
 		           		else  
-		           			if( occCell.getTypeId() == -2) { // FirstFit 		    	    	
+		           			if( occCell.getTypeId() == OccupationCell.FIRSTFIT) { // FirstFit 		    	    	
 		           				cellBorder.setThickness(1, NORTH);
 		           				if(occCell.leftBound=='[')
 		           					cellBorder.setThickness(2, WEST);
@@ -726,24 +771,34 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		           				else
 		           					cellBorder.setThickness(0, EAST);	
 		           				setBorder(cellBorder);
-		           				cell.setBackground( Color.GREEN );	                    
+		           				cell.setBackground( Color.DARK_GRAY);	                    
 		           			}
-	        	setText("");
-                if( c == table.getSelectedColumn() &&  r == table.getSelectedRow()) { // identify selected cell
+        		setText("");
+	        	if( occCell.getTypeId() == OccupationCell.FILTERED)
+	        		setText("x");
+	        	if( occCell.getTypeId() == OccupationCell.CONFLICT)
+	        		setText("C");
+	        	if( occCell.getTypeId() == OccupationCell.EXCEPTION)
+	        		setText("X");
+	        	// identify the selected cell
+                if( c == table.getSelectedColumn() &&  r == table.getSelectedRow()) { 
                 	// Selector context Popup
-       				cellBorder.setThickness(0, NORTH);
-       				cellBorder.setThickness(5, WEST);
-       				cellBorder.setThickness(0, SOUTH);
-       				cellBorder.setThickness(5, EAST);	
-                	cell.setBackground( Color.GRAY );
+                	cellBorder.ResetLinesBorder(Color.BLACK,1);
+       				cellBorder.setThickness(3, NORTH);
+       				cellBorder.setThickness(3, WEST);
+       				cellBorder.setThickness(3, SOUTH);
+       				cellBorder.setThickness(3, EAST);	
+                	//cell.setBackground( Color.GRAY );
        				setBorder(cellBorder);
 	        	}
+	        	
 	        }
 	        
 	        if( value instanceof AllocationCell )
 	        {
-	          	Font font = cell.getFont();
-       			cell.setFont(font.deriveFont(Font.BOLD));
+	        	super.setHorizontalAlignment(SwingConstants.LEFT);
+	        	Font textFont = new Font("SanSerif", Font.BOLD, 15);
+       			cell.setFont(textFont);
        			AllocationCell allcCell = (AllocationCell) value;
        			// handle the first column: Resources
        			Allocatable allc = allcCell.allocatable;
@@ -800,20 +855,30 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
    				Font font = cell.getFont();
    				cell.setFont(font.deriveFont(Font.BOLD));
    				AllocationCell allcCell = (AllocationCell) occupationTableModel.getValueAt(row,OccupationTableModel.CALENDAR_RESOURCE);
-    			cell.setBackground( Color.WHITE);
-    			Allocatable alloc = allcCell.allocatable;
-        		AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
-        		if(type != null) {
-	        		Classification classification = alloc.getClassification();
-	       	    	Object endlife = classification.getValue("_endoflife");
-	       	    	if(endlife==null) {
-    	        			Object daysOut  = occupationTableModel.getValueAt(row, OccupationTableModel.CALENDAR_OUT_DAYS);
-    	        			if( (Integer) daysOut == Integer.MAX_VALUE) // old enough to be archived
-           	    				cell.setBackground( Color.GREEN);
-           	    			else
-    	       	    			cell.setBackground( Color.ORANGE);
-           	    		}
-       	    		}
+   				if(allcCell != null) {
+   					cell.setBackground( Color.WHITE);
+   					Allocatable alloc = allcCell.allocatable;
+	        		AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
+	        		
+	        		if(type != null) {
+		        		Classification classification = alloc.getClassification();
+		       	    	Object endlife = classification.getValue("_endoflife");
+		       	    	if( endlife != null )
+		       	    		cell.setBackground( Color.RED);
+		       	    	else {
+		       	    		Object daysOutObject  = occupationTableModel.getValueAt(row, OccupationTableModel.CALENDAR_OUT_DAYS);
+		       	    		if(daysOutObject != null) {
+		       	    			int daysOut  =(Integer) daysOutObject;
+		       	    			int daysIn  =(Integer) occupationTableModel.getValueAt(row, OccupationTableModel.CALENDAR_IN_DAYS);
+		       	    			if(daysIn == Integer.MAX_VALUE )
+		       	    				cell.setBackground( Color.GREEN);
+		       	    			else
+		       	    				if( daysOut != Integer.MAX_VALUE && cleanupAge + daysOut <= 0) // old enough to be archived
+		       	    					cell.setBackground( Color.GREEN);
+		       	    		}
+		       	    	}
+	        		}
+   				}
    	    		setText(Integer.toString(r+1));
    	    		return cell;
    			}
@@ -830,15 +895,6 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
    				setText((value == null) ? "" : "Unknown"); 
    			}
 
-    		if(c == occupationTableModel.getTodayColumn() && c > OccupationTableModel.CALENDAR_EVENTS) {
-    			cell.setBackground( Color.decode("#bb5823"));
-   			}
-   	        
-    		if(c >= OccupationTableModel.CALENDAR_EVENTS) {
-   				if (hasFocus)
-   					cell.setForeground( Color.GRAY );
-            }
-            
 	        //setText((value == null) ? "" : value.toString()); 
             return cell;
         }
@@ -848,7 +904,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         return sorter.modelIndex(r);
     }
 
-     Color getColorForClassifiable( Classifiable classifiable ) {
+    private Color getColorForClassifiable( Classifiable classifiable ) {
         Classification c = classifiable.getClassification();
         Attribute colorAttribute = c.getAttribute("color");
         String color = null;
@@ -876,7 +932,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         }
         return null;
     }
-
+    
     class GroupableTableCellRenderer extends DefaultTableCellRenderer {
 
 		private static final long serialVersionUID = 1L;
@@ -898,9 +954,13 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     
 	private final String dayNames[] = new DateFormatSymbols().getShortWeekdays();
     class DayOfWeekHeaderRenderer extends DefaultTableCellRenderer {
-
+    	private String tag;
 		private static final long serialVersionUID = 1L;
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean selected, boolean focused, int r, int c) {
+        public DayOfWeekHeaderRenderer(String tag) {
+			this.tag = tag;
+		}
+                               
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean selected, boolean focused, int r, int c) {
         	if(value instanceof String)
         	{
         		int dd = Integer.parseInt(((String) value));
@@ -915,9 +975,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	else {
                 setText(value != null ? value.toString() : " ");
         	}
-            
-            //if(c == occupationTableModel.getTodayColumn())
-            //    setBackground(Color.decode("#bb5823"));
+        
+            if(tag.equals("ToDay")) {
+            	setBackground(Color.BLACK);
+            	this.setForeground(Color.WHITE);
+            }
             
             setHorizontalAlignment(SwingConstants.CENTER);
             setBorder(UIManager.getBorder("TableHeader.cellBorder"));
@@ -946,11 +1008,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     public class PopupTableHandler extends MouseAdapter {
 
 	    void showPopup(MouseEvent me) throws RaplaException{
-	    	// Conflict   " " = Resource is available
-	    	// Conflict   "X" = Resource is not allways available
-	    	// Conflict   "C" = Resource is used at requested timestamp
-	    	// Forbidden  "F" = Resource is not available at the specified timestamp
-	    	// First Fit proposal "=" = Resource is available for the request period
+
 	        Point p = new Point(me.getX(), me.getY());
 	        int r = table.getSelectedRow();
 	        int c = table.getSelectedColumn();
@@ -961,67 +1019,63 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        Object obj = occupationTableModel.getValueAt(r, c);
 	        if (obj instanceof OccupationCell ) {
 	        	OccupationCell occCell = (OccupationCell) obj;
-		        if(occCell.getTypeId() > 0) 
+		        if(occCell.getTypeId() == OccupationCell.OCCUPIED || occCell.getTypeId() == OccupationCell.CONFLICT) 
 		        	editPopup(occCell, r, c, p);
-		        else 
+		        if(occCell.getTypeId() == OccupationCell.FREE || occCell.getTypeId() == OccupationCell.FIRSTFIT) 
 		        	newPopup(occCell, r, c, p);
 		        }
 	        
 	        if (obj instanceof AllocationCell ) {
 	        		AllocationCell alcCell = (AllocationCell) obj;
 	        		if(alcCell.allocatable !=null ) {
-	        			Object daysOut  = occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_OUT_DAYS);
+	        			Object daysOut = occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_OUT_DAYS);
 	        			Object daysIn  = occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_IN_DAYS);
-        				if((Integer) daysOut == Integer.MAX_VALUE && (Integer) daysIn == Integer.MAX_VALUE) 
-    						archivePopup(alcCell, r, c, p, 0);	
-	        			else
-		        			if( ((Integer) daysOut < 0)) 
-		        				archivePopup(alcCell, r, c, p,(Integer) daysOut);
+	        			if(daysOut != null) {
+	        					if( ((Integer) daysOut <= 0)) 
+	        						archivePopup(alcCell, r, c, p,(Integer) daysOut);
+	        			}
+	        			if(daysIn == null) 
+	        				archivePopup(alcCell, r, c, p, -cleanupAge);
 	        		}	
 	        }
 	        return;
 	    }
 	    
-		public void newPopup(OccupationCell occCell, int r, int c, Point p) throws RaplaException {    
+		public void newPopup(OccupationCell occCell, int r, int c, Point point) throws RaplaException { 
+			if( occCell.getTypeId() == OccupationCell.FORBIDDEN) 
+				return;
+
+			if(!isTableEditableTable || isReadOnlyUser || excludeDays.size() != 0)
+				return;
+			
 	        Calendar calendarStart = null;
 	        Calendar calendarEnd = null;
-	        
-	        if( occCell.getTypeId() == -2) { 
+
+	        if( occCell.getTypeId() == OccupationCell.FIRSTFIT) { 
 	        	int cs = occupationTableModel.findStartSlot(r, c, -2) - OccupationTableModel.CALENDAR_EVENTS; // corrected start
 				calendarStart = (Calendar) calendarDS.clone();
 				calendarStart.add(Calendar.DATE, cs);
 				calendarEnd = (Calendar) calendarStart.clone();
 	        	calendarEnd.add(Calendar.DATE, occupationTableModel.getFreeSlot());
 			} else 
-				if( occCell.getTypeId() == 0) { 
+				if( occCell.getTypeId() == OccupationCell.FREE) { // Free Cell
 					calendarStart = (Calendar) calendarDS.clone();
 	        		calendarStart.add(Calendar.DATE, c - OccupationTableModel.CALENDAR_EVENTS);
 					calendarEnd = (Calendar) calendarStart.clone();
-					calendarEnd.add(Calendar.DATE, 1);
-				} else 
-					if( occCell.getTypeId() == -1) {
-						return;
-					}
-	                
-	    	mutableReservation = getClientFacade().newReservation();
-	    	Appointment appointment = null;
-	        appointment = getClientFacade().newAppointment( calendarStart.getTime(), calendarEnd.getTime(), repeatingType, repeatingDuration );
-	        appointment.setWholeDays(true);
-	        mutableReservation.addAppointment(appointment);
-	        AllocationCell alcCell = (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE);
-	    	Allocatable alloc = alcCell.allocatable;
-	        mutableReservation.addAllocatable(alloc);   
+					calendarEnd.add(Calendar.DATE, getReservationOptions().getnTimes() - 1);
+				}
+  
 	        JPopupMenu popup = new JPopupMenu();
-	        newAdapter menuAction = new newAdapter(mutableReservation,0);
-	        JMenuItem newItem = new JMenuItem(getString("new"),getIcon( "icon.new"));
+	        newAdapter menuAction = new newAdapter(null,null, point);
+	        JMenuItem newItem = new JMenuItem(getString("move_in"),getIcon( "icon.new"));
 	        newItem.setActionCommand("new");
 	        newItem.addActionListener(menuAction);
 	        popup.add(newItem);
-	        popup.show( table, p.x, p.y); 
+	        popup.show( table, point.x, point.y); 
 	    }
 
 		SimpleDateFormat sdfdatetime = new SimpleDateFormat("yyyy-MM-dd");
-		public void archivePopup(AllocationCell alcCell, int r, int c, Point p, int days) throws RaplaException {    
+		public void archivePopup(AllocationCell alcCell, int r, int c, Point point, int days) throws RaplaException {    
 	    	Allocatable alloc = alcCell.allocatable; 
 	    	
     		AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
@@ -1029,67 +1083,102 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 				return;
 
 	        JPopupMenu popup = new JPopupMenu();
-	        newAdapter menuAction = new newAdapter(alloc, days);
+	        Date cleanupDate = today;
 	        JMenuItem archiveItem;
 	        if(canModify(alloc)) {
 	        	if (type.equals(AttributeType.BOOLEAN))
 	        		archiveItem = new JMenuItem(getI18n().getString("archive_yn"),getIcon( "icon.archive"));
 	        	else {
-		        if(days < 0) {
-			        	archiveItem = new JMenuItem(getI18n().format("forcearchive_lt", sdfdatetime.format(DateTools.addDays(today, (int) (archiveAge + days))), archiveAge),getIcon( "icon.archive"));
-		        	 archiveItem.setBackground(Color.ORANGE);
-		        }	 
-		        else {
-		        		archiveItem = new JMenuItem(getI18n().format("archiveda_gt", sdfdatetime.format(today), archiveAge),getIcon( "icon.archive"));
-		        	 archiveItem.setBackground(Color.GREEN);
-		        }
+			        if((cleanupAge + days) > 0) {
+			        	cleanupDate = DateTools.addDays(today, (int) (cleanupAge + days));
+			        	archiveItem = new JMenuItem(getI18n().format( 
+			        												  "forcearchive_lt"
+			        												, new Object [] { 
+			        														          sdfdatetime.format(cleanupDate)
+			        								 				                , Math.abs(days)
+			        								 				                , cleanupAge
+			        															    }
+			        												)
+			        												, getIcon( "icon.archive")
+			        												);
+			            archiveItem.setBackground(Color.ORANGE);
+			        }	 
+			        else {
+		        		archiveItem = new JMenuItem(getI18n().format(
+		        													  "archive_gt"
+		        													, new Object [] {
+		        																	  sdfdatetime.format(cleanupDate)
+		        													                , cleanupAge
+		        																    }
+		        													)
+		        													,getIcon( "icon.archive")
+		        													);
+			        	archiveItem.setBackground(Color.GREEN);
+			        }
 			   }
-			    archiveItem.setEnabled(true);
-		        archiveItem.setActionCommand("archive");
-		        }
+			   archiveItem.setEnabled(true);
+		       archiveItem.setActionCommand("archive");
+	        }
 	        else {
 	        	 archiveItem = new JMenuItem(getString("permission.denied"),getIcon("icon.no_perm"));
 	 	         archiveItem.setEnabled(true);
 	        }
+		    newAdapter menuAction = new newAdapter(alloc, cleanupDate, point);
 	        archiveItem.addActionListener(menuAction);
 	        popup.add(archiveItem);
-	        popup.show( table, p.x, p.y); 
+	        popup.show( table, point.x, point.y); 
 	    }
-				
-	    public void editPopup(OccupationCell occCell, int r, int c, Point p) throws RaplaException {  
+				    
+	    public void editPopup(OccupationCell occCell, int r, int c, Point point) throws RaplaException {  
+	    	Appointment appointment = occCell.getAppointment();
+       		Reservation reservation = appointment.getReservation();
+		    JPopupMenu popup = new JPopupMenu();
+		    newAdapter menuActionAppointment = new newAdapter(appointment, null, point);
+		    newAdapter menuActionReservation = new newAdapter(reservation, null, point);
 
-       		Reservation reservation = occCell.getReservation();
-    	
-	        JPopupMenu popup = new JPopupMenu();
-	        newAdapter menuAction = new newAdapter(reservation, 0);
-	        JMenuItem editItem = new JMenuItem(getString("edit"),getIcon( "icon.edit"));
-	        editItem.setActionCommand("edit");
-	        editItem.addActionListener(menuAction);
-	        editItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
-	        popup.add(editItem);
-	              
-	        JMenuItem deleteItem = new JMenuItem(getString("delete"),getIcon( "icon.delete"));
-	        deleteItem.setActionCommand("delete");
-	        deleteItem.addActionListener(menuAction);
-	        deleteItem.setEnabled(canModify(reservation));
-	        popup.add(deleteItem);
-	        
-	        JMenuItem viewItem = new JMenuItem(getString("info"),getIcon( "icon.help"));
-	        viewItem.setActionCommand("info");
-	        viewItem.addActionListener(menuAction);
+			if(isTableEditableTable && !isReadOnlyUser) {
+		        JMenuItem editItem = new JMenuItem(getString("edit"),getIcon( "icon.edit"));
+			    editItem.setActionCommand("edit");
+			    editItem.addActionListener(menuActionAppointment);
+			    editItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
+			    popup.add(editItem);
+			    
+		        JMenuItem splitItem = new JMenuItem(getString("move_internal"),getIcon( "icon.split"));
+		        splitItem.setActionCommand("split");
+		        splitItem.addActionListener(menuActionAppointment);
+		        splitItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
+			    popup.add(splitItem);
+
+		        JMenuItem endItem = new JMenuItem(getString("move_out"),getIcon( "icon.exit"));
+		        endItem.setActionCommand("end");
+		        endItem.addActionListener(menuActionAppointment);
+		        endItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
+			    popup.add(endItem);
+ 
+			    JMenuItem deleteItem = new JMenuItem(getString("delete"),getIcon( "icon.delete"));
+			    deleteItem.setActionCommand("delete");
+			    deleteItem.addActionListener(menuActionAppointment);
+			    deleteItem.setEnabled(canModify(reservation));
+			    popup.add(deleteItem);
+			}
+        
+	        JMenuItem viewItemReservation = new JMenuItem(getString("info-reservation"),getIcon( "icon.help"));
+	        viewItemReservation.setActionCommand("info");
+	        viewItemReservation.addActionListener(menuActionReservation);
 	        User owner = reservation.getOwner();
 	        try 
 	        {
 	            User user = getUser();
 	            boolean canView = getQuery().canReadReservationsFromOthers( user) || user.equals( owner);
-	            viewItem.setEnabled( canView);
+	            viewItemReservation.setEnabled( canView);
 	        } 
 	        catch (RaplaException ex)
 	        {
 	            getLogger().error( "Can't get user",ex);
 	        }
-	        popup.add(viewItem);
-	        popup.show( table, p.x, p.y); 
+	        popup.add(viewItemReservation);
+
+	        popup.show( table, point.x, point.y); 
 	    }
 	    
 	    /** Implementation-specific. Should be private.*/
@@ -1116,8 +1205,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	    
 	    /** double click*/
 	    public void mouseClicked(MouseEvent me) {
-	        if (me.getClickCount() > 1 )
-	        {
+	        if (me.getClickCount() > 1 ) {
+
+            	if(isReadOnlyUser)
+            		return;
+
 	            //Point p = new Point(me.getX(), me.getY());
 		        int r = table.getSelectedRow();
 		        int c = table.getSelectedColumn();
@@ -1129,91 +1221,213 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	            Object occupation = occupationTableModel.getValueAt(r, c);
 	            if(occupation instanceof OccupationCell) {
 	            	OccupationCell occCell = (OccupationCell) occupation;
-	            	Reservation reservation = occCell.getReservation();
-		            if( reservation != null) {
-			    		try {
-			    			if(canModify(reservation) || getQuery().canExchangeAllocatables(reservation))
-			    			{
-			    				edit( reservation, c);
-			    			}
-			    			} catch (RaplaException e) {
-			        			// TODO Auto-generated catch block
-			        			e.printStackTrace();
-			        		}
-			    		}
-	        		}
-	    		}
+	            	if(occCell.object!=null && (occCell.getTypeId() == OccupationCell.OCCUPIED || occCell.getTypeId() == OccupationCell.CONFLICT)) {
+	            		if(occCell.object instanceof Appointment) {
+	            			Reservation reservation = occCell.getAppointment().getReservation();
+				    		try {
+				    			if(canModify(reservation) || getQuery().canExchangeAllocatables(reservation))
+				    				getReservationController().edit((Appointment) occCell.object, occupationTableModel.getColumnDate(c));
+				        	} catch (RaplaException e) {
+				        			// TODO Auto-generated catch block
+				        			e.printStackTrace();
+				        	}
+				    	}
+	            	}
+	            }
 	    	}
-
-        
 	    }
+	}
     
-    public void edit(Reservation reservation, int c) throws RaplaException {
-        getReservationController().edit(reservation.getAppointments()[0], occupationTableModel.getColumnDate(c));
-    }
     public class newAdapter implements ActionListener {
     	private Object obj;
-    	private int days;
+    	private Date cleanupDate;
+    	Point point;
 
-    	newAdapter(Object obj, int days) {
+    	newAdapter(Object obj, Date cleanupDate, Point point) {
     		this.obj = obj;
-    		this.days = days;
+    		this.cleanupDate = cleanupDate;
+    		this.point = point;
+    	}
+    	
+    	private Point getPoint() {
+    		return this.point;
     	}
 
 	public void actionPerformed(ActionEvent evt) {
         try {
         	int c = table.getSelectedColumn();
-        	//int r = table.getSelectedRow();
+        	int r = table.getSelectedRow();     
+
+        	Point point = new Point(100,25);
+              
         	if(evt.getActionCommand().equals("new")) {
-    			edit((Reservation)obj,c);
+        		Appointment newApp = newReservation(occupationTableModel.getColumnDate(c), (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE));
+        		if(newApp !=null)
+        			getReservationController().edit(newApp, occupationTableModel.getColumnDate(c));
+        		/*
+        		getReservationController().edit(((Appointment) obj), occupationTableModel.getColumnDate(c)); 
+        		*/
         	}
-        	else 
-        		if(evt.getActionCommand().equals("edit")) {
-        			edit((Reservation) obj,c);
+        	else if(evt.getActionCommand().equals("edit")) {
+        			getReservationController().edit(((Appointment) obj), occupationTableModel.getColumnDate(c));
+        	}
+        	else if(evt.getActionCommand().equals("delete")) {
+        			AppointmentAction deleteAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+        			// get selected date
+        			deleteAction.setDelete((Appointment) obj,occupationTableModel.getColumnDate(c));
+            		deleteAction.actionPerformed(evt);
+        	}	
+        	else if(evt.getActionCommand().equals("split")) {
+    			AppointmentAction splitAction = new AppointmentAction( getContext(), getComponent(), point);
+    			// get selected date
+    			splitAction.setSplit((Appointment) obj,occupationTableModel.getColumnDate(c));
+        		splitAction.actionPerformed(evt);
+        	}	
+
+        	else if(evt.getActionCommand().equals("end")) {
+    			AppointmentAction endAction = new AppointmentAction( getContext(), getComponent(), point);
+    			// get selected date
+    			endAction.setEnd((Appointment) obj,occupationTableModel.getColumnDate(c));
+        		endAction.actionPerformed(evt);
+        	}	
+
+        	else if(evt.getActionCommand().equals("info")) {
+        		if(obj instanceof Appointment) {
+        			AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+    				viewAction.setView((Appointment) obj);
+    				viewAction.actionPerformed(evt);
+    			}
+    			else {
+        			ReservationAction viewAction = new ReservationAction( getContext(), getComponent(), getPoint());
+        			viewAction.setView((Reservation) obj);
+        			viewAction.actionPerformed(evt);
         		}
-        		else {
-            		if(evt.getActionCommand().equals("delete")) {
-            			AppointmentAction deleteAction = new AppointmentAction( getContext(), getComponent(),null);
-            			Appointment[] apps = ((Reservation) obj).getAppointments();
-            			// get selected date
-            	        //int r = table.getSelectedRow();
-            			deleteAction.setDelete(apps[0],occupationTableModel.getColumnDate(c));
-                		deleteAction.actionPerformed(null);
-            			update();
-            		}
-            		else
-	        			if(evt.getActionCommand().equals("info")) {
-	        				AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(),null);
-	        				Appointment[] apps = ((Reservation) obj).getAppointments();
-	            			viewAction.setView(apps[0]);
-	            			viewAction.actionPerformed(null);
-	        			}
-	                	else 
-	                		if(evt.getActionCommand().equals("archive")) {
-	                			Allocatable alloc = (Allocatable) obj;
-	                    		AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
-	                    		if(type == null)
-	                    			return;
+        	}
+	        else if(evt.getActionCommand().equals("archive")) {
+	        		Allocatable alloc = (Allocatable) obj;
+	                AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
+	                if(type == null)
+	                	return;
 	                    		
-	                			AppointmentAction archiveAction = new AppointmentAction( getContext(), getComponent(),null);
-	                			
-	                			if(days < 0) {
-	                				Date endOfLife = DateTools.addDays(today, (int) (archiveAge + days));
-	                				if(sendOKMsg("confirm", endOfLife) == 0); // OK
-	                					endOfLifeAllocatable (alloc, endOfLife);
-	                			}	
-	                			else
-                					endOfLifeAllocatable (alloc, today);
-	                				
-	                			archiveAction.actionPerformed(null);
-	                		}
-        		}
+	    			AppointmentAction archiveAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+	    			if(sendOKMsg("confirm", cleanupDate) == 0) // OK
+	    				endOfLifeAllocatable (alloc, cleanupDate);
+	    				
+	    			archiveAction.actionPerformed(evt);
+	    		}
+        		
 		} catch (RaplaException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 	  }
 	}
+    
+    public Appointment newReservation(Date selectedDate, AllocationCell alcCell) throws RaplaException {
+    	Calendar calendarStart = raplaLocale.createCalendar();
+    	calendarStart.setTime(selectedDate);
+    	long startTime = getCalendarOptions().getWorktimeStartMinutes() * DateTools.MILLISECONDS_PER_MINUTE;
+    	calendarStart.add(Calendar.MILLISECOND, (int) startTime);
+
+    	int rc = 0;
+		try {
+        	Object value = alcCell.allocatable.getClassification().getValue("_periodselector"); 
+        	if(value == null || ((Boolean) value) == false)
+        		rc = 1;
+        	else
+            	rc = selectIntervalDialog(calendarStart.getTime(), alcCell.allocatable);
+		} catch (NoSuchElementException e) {
+    		rc = 3;
+		}
+    	
+		if(rc == 0) // Canceled dialog
+			return null;
+		
+		else if(rc == 1 || rc == 3) { // 1 = New Period requested  3 = no "_periodselector" element found 
+			mutableReservation = getClientFacade().newReservation();
+			Classification classification = getClientFacade().getDynamicType(eventType).newClassification();
+			mutableReservation.setClassification(classification);
+		}
+		else if(rc == 2) { // 2 = Selected period
+			mutableReservation = (Reservation)getModification().edit(selectedInterval.getReservation());
+		}
+
+    	Appointment appointment = null;
+    	/*
+    	Calendar calendarStart = raplaLocale.createCalendar();
+    	calendarStart.setTime(selectedDate);
+    	long startTime = getCalendarOptions().getWorktimeStartMinutes() * DateTools.MILLISECONDS_PER_MINUTE;
+    	calendarStart.add(Calendar.MILLISECOND, (int) startTime);
+		*/
+    	Calendar calendarEnd = raplaLocale.createCalendar();
+    	calendarEnd.setTime(selectedDate);
+    	calendarEnd.add(Calendar.DATE, getReservationOptions().getnTimes() - 1 );
+    	long endTime = getCalendarOptions().getWorktimeOvernight() * DateTools.MILLISECONDS_PER_DAY
+			         + getCalendarOptions().getWorktimeEndMinutes() * DateTools.MILLISECONDS_PER_MINUTE;  	
+    	calendarEnd.add(Calendar.MILLISECOND, (int) endTime);
+
+        if(getReservationOptions().getRepeatingType().is(RepeatingType.NONE)) {
+        	appointment = getClientFacade().newAppointment( calendarStart.getTime(), calendarEnd.getTime());
+        	appointment.setWholeDays(false);
+        }
+        else {
+        	appointment = getClientFacade().newAppointment(   calendarStart.getTime()
+        													, calendarEnd.getTime()
+        													, getReservationOptions().getRepeatingType()
+        													, getReservationOptions().isInfiniteRepeating() ? -1 : (1 * getReservationOptions().getnTimes())
+        												  );  // -1:infinite; >0:=n-times
+        	appointment.setWholeDays(true);
+        }
+
+        mutableReservation.addAppointment(appointment);
+        mutableReservation.addAllocatable(alcCell.allocatable);
+        return appointment;
+    }
+    
+    private int selectIntervalDialog(Date selectedDate, Allocatable allocatable) throws RaplaException {
+		Reservation[] reservations = getQuery().getReservationsForAllocatable(new Allocatable[] { allocatable }, null, null, null);
+		if(reservations.length == 0)
+			return 3;
+		
+		int defaultInterval = -1;
+		List<String> intervalLabels = new ArrayList<String>();
+		List<Interval> intervalDates = new ArrayList<Interval>();
+
+		for(Reservation reservation: reservations) {
+			try {
+		    	Date periodStartEvent = (Date) reservation.getClassification().getValue("_periodstart"); 
+		    	if(periodStartEvent == null) 
+		    		continue;
+		    	
+				Calendar periodStart = Calendar.getInstance(timezone);
+				periodStart.setTime(periodStartEvent);
+				periodStart.add(Calendar.MINUTE, getCalendarOptions().getWorktimeStartMinutes());
+				
+				Calendar periodEnd = Calendar.getInstance(timezone);
+				periodEnd.setTime((Date) periodStartEvent);
+				periodEnd.add(Calendar.YEAR, 1);
+				periodEnd.add(Calendar.MINUTE, getCalendarOptions().getWorktimeEndMinutes());
+				
+				Date start = periodStart.getTime();
+				Date end = periodEnd.getTime();
+
+		    	if (start.before(selectedDate) && end.after(selectedDate))
+		    		defaultInterval = intervalLabels.size();
+		    	intervalLabels.add(raplaLocale.formatTimestamp((Date) start,timezone) + " " + raplaLocale.formatTimestamp((Date) end,timezone));
+		    	intervalDates.add(new Interval(start, end, reservation));
+		    	
+			} catch (NoSuchElementException ex) {
+				continue;
+			}
+		}
+        if(defaultInterval == -1) { // new 
+        	return 1;
+        }
+        else {
+        	selectedInterval = intervalDates.get(defaultInterval); 
+    		return 2;  
+        }
+    }
 
 	public  void endOfLifeAllocatable (Allocatable alloc, Date endDate) throws RaplaException {
 		Classification classification = alloc.getClassification();
@@ -1225,9 +1439,9 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			Object endlife = classification.getValue("_endoflife");
 			if(type.equals(AttributeType.DATE)) {
 				if(endlife == null || endDate.after((Date) endlife)) {	
-	    		Allocatable editAllocatable = (Allocatable)getClientFacade().edit( alloc);
-	    		editAllocatable.getClassification().setValue("_endoflife", endDate);
-	            getClientFacade().store( editAllocatable );
+		    		Allocatable editAllocatable = (Allocatable)getClientFacade().edit( alloc);
+		    		editAllocatable.getClassification().setValue("_endoflife", endDate);
+		            getClientFacade().store( editAllocatable );
 				}
 			}
 			else if(type.equals(AttributeType.BOOLEAN)) {
@@ -1281,6 +1495,16 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		    setThickness(thickness);
 	    }
 
+		public void ResetLinesBorder(Color color, int thickness)  {
+		    setColor(color);
+		    setThickness(thickness);
+	    }
+
+		public LinesBorder(Color color, int thickness, int offset, int direction)  {
+		    setColor(color);
+		    setThickness(thickness);
+	    }
+
 		public LinesBorder(Color color, Insets insets)  {
 		    setColor(color);
 		    setThickness(insets);
@@ -1288,26 +1512,34 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
 		public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
 			Color oldColor = g.getColor();
-		    
+			//System.out.println("x=" + x + " ,y=" + y + " ,width=" + width + " ,height=" + height);
 		    g.setColor(northColor);
 		    for (int i = 0; i < northThickness; i++)  {
 		      g.drawLine(x, y+i, x+width-1, y+i);
 		    }
+		    
 		    g.setColor(southColor);
 		    for (int i = 0; i < southThickness; i++)  {
 		      g.drawLine(x, y+height-i-1, x+width-1, y+height-i-1);
 		    }
-		    g.setColor(eastColor);
+
+		    g.setColor(westColor);
+		    //System.out.println("westThickness=" + westThickness);
 		    for (int i = 0; i < westThickness; i++)  {
 		      g.drawLine(x+i, y, x+i, y+height-1);
+		      //System.out.println("West X1=" + (x+i) +" ,Y1=" + y + " ,X2=" + (x+i) +" ,Y2=" + (y+height-1));
 		    }
-		    g.setColor(westColor);
+		    
+		    g.setColor(eastColor);
+		    //System.out.println("eastThickness=" + eastThickness);
 		    for (int i = 0; i < eastThickness; i++)  {
-		      g.drawLine(x+width-i-1, y, x+width-i-1, y+height-1);
+		      g.drawLine(x+width-eastThickness+i, y, x+width-eastThickness+i, y+height-1);
+		      //System.out.println("East X1=" + (x+width-eastThickness+i) +" ,Y1=" + y + " ,X2=" + (x+width-eastThickness+i) +" ,Y2=" + (y+height-1));
 		    }
+		    
 		    g.setColor(oldColor);
 		  }
-
+		
 		public Insets getBorderInsets(Component c)       {
 		    return new Insets(northThickness, westThickness, southThickness, eastThickness);
 		}
@@ -1319,7 +1551,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		public boolean isBorderOpaque() {
 			return true;
 		}
-		    
+
 		public void setColor(Color c) {
 		    northColor = c;
 		    southColor = c;
@@ -1401,16 +1633,27 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		  
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int r, int c) {
 			int row =convertRowIndexToModel(table,r);
-			OccupationCell occCell = null;
+			OccupationCell occCell= null;
+			int columnCount = occupationTableModel.getColumnCount() - 1;
+			for ( int column = OccupationTableModel.CALENDAR_EVENTS ; column <= columnCount; column++) {
+		        Object obj = occupationTableModel.getValueAt(row, column);
+		        if (obj instanceof OccupationCell ) {
+		        	occCell = (OccupationCell) obj;
+		        	if(occCell.object!=null)
+		        		break;
+		        }	
+			}
+			/*
 			if(occupationTableModel.getTodayColumn()!= 0)
 				occCell = (OccupationCell) occupationTableModel.getValueAt(row,occupationTableModel.getTodayColumn());
 			else
 				occCell = (OccupationCell) occupationTableModel.getValueAt(row,OccupationTableModel.CALENDAR_EVENTS);
-				
+			*/	
 			if(occCell!=null) {
-				final Reservation reservation = occCell.getReservation();
-                if( reservation != null  ) {
-					AllocatableColors controlColors = new AllocatableColors(reservation); 
+				final Appointment app = occCell.getAppointment();
+                if( app != null  ) {
+    				//final Reservation reservation = occCell.getAppointment().getReservation();
+					AllocatableColors controlColors = new AllocatableColors(app); 
 			   		return controlColors;
 			    }
 			}
@@ -1419,15 +1662,15 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	}
 	
 	public class AllocatableColors extends JComponent {
-   		Font textFont = new Font("SanSerif", Font.BOLD, 12);
+   		Font textFont = new Font("SanSerif", Font.BOLD, 15);
    	    FontMetrics fontMetrics = getFontMetrics(textFont);
    		
 		private static final long serialVersionUID = 1L;
 		
-		Reservation reservation;
+		Appointment appointment;
 		
-		AllocatableColors(Reservation reservation) {
-			this.reservation = reservation;
+		AllocatableColors(Appointment appointment) {
+			this.appointment = appointment;
 		}
 		
 		public void paint(Graphics g) {
@@ -1435,7 +1678,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 				Classification classification = null;
         		
         		// Resource check points
-		        List arrayList =  Arrays.asList(reservation.getAllocatables());
+				Reservation reservation = appointment.getReservation();
+		        List arrayList =  Arrays.asList(reservation.getAllocatablesFor(appointment));
 		        
 		        Comparator comp = new Comparator() {
 	                public int compare(Object o1, Object o2) {
@@ -1454,17 +1698,28 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		        while (it.hasNext()) {
 		            Allocatable allocatable = (Allocatable) it.next();
 	    			classification = allocatable.getClassification();
-	    			g.drawRect (1 + i*22, 0, 19, 14);
+	    			// border
+	    			g.setColor(Color.BLACK);
+	    			int height = table.getRowHeight();
+	    			int width = 19;
+	    			int distance = 21;
+	    			g.fillRect(i*distance, 0, 2, height); //Left border
+	   	         	g.fillRect(i*distance, 0, width, 2); //Top border
+	   	         	g.fillRect(i*distance + width-2, 0, 2, height); //Right border
+	   	         	g.fillRect(i*distance, height-2, width, 2); //Bottom border
+	    			//g.drawRect (1 + i*22, 8, 19, table.getRowHeight()-2);
+
 		            color = getColorForClassifiable( allocatable );
+		            // Color
 		            if ( color == null )
 		                g.setColor(Color.WHITE); //RaplaColorList.getHexForColor( RaplaColorList.getResourceColor(i));
 		            else
 		    			g.setColor(color);
-		    			g.fillRect (2 + i*22, 1, 18, 13);
-		    			g.setFont(textFont);
-		    			g.setColor(Color.BLACK);
-	           		
-		            g.drawString(classification.getType().getName(locale).substring(0,1), 5 + i*22, 12); // First character from name
+	    			g.fillRect (2 + i*distance, 2, width-4, height-4);
+	    			// Text
+	    			g.setFont(textFont);
+	    			g.setColor(Color.BLACK);
+		            g.drawString(classification.getType().getName(locale).substring(0,1), 4 + i*22, table.getRowHeight()- 8); // First character from name
 	           		i++;
 		        }
 		        
@@ -1533,4 +1788,43 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			return this;
 		}
 	}
+	
+    Printable printable = null;
+    /**
+     * @see java.awt.print.Printable#print(java.awt.Graphics, java.awt.print.PageFormat, int)
+     */
+    public int print(Graphics graphics, PageFormat format, int page) throws PrinterException {
+        MessageFormat header = new MessageFormat( model.getNonEmptyTitle());
+        MessageFormat footer = new MessageFormat("- {0} -");
+    	Printable  printable = table.getPrintable( JTable.PrintMode.FIT_WIDTH,header, footer );
+        return printable.print( graphics, format, page);   
+    }
+    
+    static Map<Integer,Map<String,Color>> alphaMap = new HashMap<Integer, Map<String,Color>>();
+    private Color adjustColor( String org, int alpha )
+    {
+		Map<String,Color> colorMap = (Map<String,Color>) alphaMap.get( alpha );
+        if ( colorMap == null )
+        {
+            colorMap = new HashMap<String,Color>();
+            alphaMap.put( alpha, colorMap );
+        }
+        Color color = colorMap.get( org );
+        if ( color == null )
+        {
+            Color or;
+            try
+            {
+                or = RaplaColorList.getColorForHex( org );
+            }
+            catch ( NumberFormatException nf )
+            {
+                or = RaplaColorList.getColorForHex( "#FFFFFF" );
+            }
+            color = new Color( or.getRed(), or.getGreen(), or.getBlue(), alpha );
+            colorMap.put( org, color );
+        }
+
+        return color;
+    }
 }

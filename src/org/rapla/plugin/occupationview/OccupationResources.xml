@@ -17,29 +17,37 @@
   <entry key="icon.help">
 	<icon src="images/eclipse-icons/help.gif"/>
   </entry>
-	<entry key="icon.archive">
-		<icon src="images/archive.gif"/>
-	</entry>
-	<entry key="icon.no_perm">
-		<icon src="gui/images/eclipse-icons/no_perm.gif"/>
-	</entry>
- 
+  <entry key="icon.archive">
+	<icon src="images/archive.gif"/>
+  </entry>
+  <entry key="icon.no_perm">
+	<icon src="images/eclipse-icons/no_perm.gif"/>
+  </entry>
+  <entry key="icon.warning">
+	<icon src="images/error.png"/>
+  </entry>
+  <entry key="icon.split">
+	<icon src="images/eclipse-icons/split.png"/>
+  </entry> 
+  <entry key="icon.exit">
+  	<icon src="images/eclipse-icons/exit.gif"/>
+  </entry>
   <entry key="occupation">
-    <text lang="en">Occupation</text>
+  	<text lang="en">Occupation</text>
    	<text lang="de">Besetzung</text>
    	<text lang="fr">l''Occupation</text>
-    <text lang="es">Ocupación</text>
-    <text lang="cs">Obsazenost</text>
-    <text lang="nl">Bezetting</text>
+   	<text lang="es">Ocupación</text>
+   	<text lang="cs">Obsazenost</text>
+   	<text lang="nl">Bezetting</text>
    	<text lang="pl">Zawód</text>
   </entry>
   <entry key="horizon">
-    <text lang="en">Month +</text>
-    <text lang="de">Monat +</text>
-    <text lang="fr">Mois + </text>
+    <text lang="en">Months: </text>
+    <text lang="de">Monate: </text>
+    <text lang="fr">Mois: </text>
     <text lang="es">...: </text>
     <text lang="cs">...: </text> 
-    <text lang="nl">Maand +</text>   
+    <text lang="nl">Maanden: </text>   
   </entry>
   <entry key="firstFit">
     <text lang="en">First fit</text>
@@ -57,13 +65,14 @@
     <text lang="cs">...: </text> 
     <text lang="nl">Beste vrij</text>   
   </entry>
-  <entry key="freeSlot">
-    <text lang="en">Free slot: </text>
-    <text lang="de">Frei: </text>
-    <text lang="fr">Libre:</text>
-    <text lang="es">...: </text>
-    <text lang="cs">...: </text> 
-    <text lang="nl">Vrij: </text>   
+  <entry key="free">
+    <text lang="en">Free</text>
+    <text lang="de">Frei</text>
+    <text lang="fr">Libre</text>
+    <text lang="es">Libre</text>
+    <text lang="cs">Volný</text> 
+    <text lang="nl">Vrij</text>   
+    <text lang="pl">Wolny</text>   
   </entry>
   <entry key="slotGaps">
     <text lang="en">#Gaps</text>
@@ -74,28 +83,21 @@
     <text lang="nl">#Gaps</text>   
   </entry>
   <entry key="forbidden">
-    <text lang="en">Resource not availabe.</text>
-    <text lang="de">...: </text>
-    <text lang="fr">Resource pas disponible."</text>
-    <text lang="es">...: </text>
-    <text lang="cs">...: </text> 
-    <text lang="nl">Materiaal niet beschikbaar.</text>   
+    <text lang="en">Not available</text>
+    <text lang="de">Nicht verfügbar</text>
+    <text lang="fr">Pas disponible"</text>
+    <text lang="es">No disponible</text>
+    <text lang="cs">Není k dispozici</text> 
+    <text lang="nl">Niet beschikbaar</text>   
+    <text lang="pl">Niedostępne</text>   
   </entry>
-  <entry key="minus1month">
-    <text lang="en">-1 Month</text>
-    <text lang="de">-1 Monate</text>
-    <text lang="fr">-1 Mois"</text>
-    <text lang="es">-1</text>
-    <text lang="cs">-1</text> 
-    <text lang="nl">-1 Maand</text>   
-  </entry>
-  <entry key="plus1month">
-    <text lang="en">+1 Month</text>
-    <text lang="de">+1 Monate</text>
-    <text lang="fr">+1 Mois"</text>
-    <text lang="es">+1</text>
-    <text lang="cs">+1</text> 
-    <text lang="nl">+1 Maand</text>   
+  <entry key="month">
+    <text lang="en">{0}{1} Month</text>
+    <text lang="de">{0}{1} Monate</text>
+    <text lang="fr">{0}{1} Mois"</text>
+    <text lang="es">{0}{1}</text>
+    <text lang="cs">{0}{1}</text> 
+    <text lang="nl">{0}{1} Maand</text>   
   </entry>
   <entry key="event_check">
 	<text lang="en">Remarks</text>
@@ -105,12 +107,13 @@
 	<text lang="nl">Opmerking</text>
  </entry>  
  <entry key="resources_persons">
-    <text lang="en">Resources/persons</text>
-    <text lang="de">Ressourcen/Personen</text>
-    <text lang="fr">Ressources/Personnes</text>
-    <text lang="es">Recursos/personas</text>
-    <text lang="cs">Prostředky/osoby</text>
-    <text lang="nl">Persoon/Materiaal</text>
+    <text lang="en">Resources</text>
+    <text lang="de">Ressourcen</text>
+    <text lang="fr">Ressources</text>
+    <text lang="es">Recursos</text>
+    <text lang="cs">Prostředky</text>
+    <text lang="nl">Middelen</text>
+    <text lang="pl">Middelen</text>
  </entry>  
  <entry key="daysin">
     <text lang="en">In</text>
@@ -119,30 +122,32 @@
     <text lang="es">Entrada</text>
     <text lang="cs">Vstupní</text>
     <text lang="nl">In</text>
+    <text lang="pl">In</text>
  </entry> 
  <entry key="daysout">
-    <text lang="en">In</text>
+    <text lang="en">Out</text>
     <text lang="de">Aus</text>
     <text lang="fr">Sortie</text>
     <text lang="es">Salida</text>
     <text lang="cs">Výstupní</text>
     <text lang="nl">Uit</text>
+    <text lang="pl">Out</text>
  </entry> 
  <entry key="archive_gt">
-    <text lang="en">Archive {0} &gt;= {1} days inactive</text>
-    <text lang="de">Archiv {0} &gt;= {1} Tage inaktiv</text>
-    <text lang="fr">Archive {0} &gt;= {1} jours inactifs</text>
-    <text lang="es">pArchivo {0} &gt;= {1} día inactivos</text>
-    <text lang="cs">Archiv {0} &gt;= {1} dnů neaktivní</text>
-    <text lang="nl">Archiveer {0} &gt;= {1} dagen inactief</text>
+    <text lang="en">Archive on {0}: &gt;= {1} days inactive</text>
+    <text lang="de">Archiv {0}: &gt;= {1} Tage inaktiv</text>
+    <text lang="fr">Archive {0}: &gt;= {1} jours inactifs</text>
+    <text lang="es">pArchivo {0}: &gt;= {1} día inactivos</text>
+    <text lang="cs">Archiv {0}: &gt;= {1} dnů neaktivní</text>
+    <text lang="nl">Archiveer op {0}: &gt;= {1} dagen inactief</text>
  </entry> 
  <entry key="forcearchive_lt">
-    <text lang="en">Archive {0} &lt; {1} days inactive</text>
-    <text lang="de">Archiv {0} &lt; {1} Tage inaktiv</text>
-    <text lang="fr">Archive {0} &lt; {1} jours inactifs</text>
-    <text lang="es">Archivo {0} &lt; {1} día inactivos</text>
-    <text lang="cs">Archiv {0} &lt; {1} dnů neaktivní</text>
-    <text lang="nl">Archiveer {0} &lt; {1} dagen inactief</text>
+    <text lang="en">Archive on {0}: {1} &lt; {2} days inactive</text>
+    <text lang="de">Archiv {0}: {1} &lt; {2} Tage inaktiv</text>
+    <text lang="fr">Archive {0}: {1} &lt; {2} jours inactifs</text>
+    <text lang="es">Archivo {0}: {1} &lt; {2} día inactivos</text>
+    <text lang="cs">Archiv {0}: {1} &lt; {2} dnů neaktivní</text>
+    <text lang="nl">Archiveer op {0}: {1} &lt; {2} dagen inactief</text>
  </entry> 
   <entry key="archive_yn">
     <text lang="en">Archive</text>
@@ -175,6 +180,7 @@
     <text lang="es">Eliminado</text>
     <text lang="cs">vypouští</text>
     <text lang="nl">Geschrapt</text>
+    <text lang="pl">Usunięte</text>
  </entry>
  <entry key="startday">
     <text lang="en">Starting day of the month</text>
@@ -182,7 +188,7 @@
     <text lang="fr">A partir du jour du mois</text>
     <text lang="es">Días a partir del mes</text>
     <text lang="cs">První den v měsíci</text>
-    <text lang="nl">Start dag van de maand</text>  
+    <text lang="nl">Startdag van de maand</text>  
     <text lang="pl">Począwszy od dnia miesiąca</text>      
  </entry>
  <entry key="FirstDay">
@@ -191,7 +197,7 @@
     <text lang="fr">Jour 1 du mois</text>
     <text lang="es">El día 1 del mes</text>
     <text lang="cs">Den 1 měsíce</text>
-    <text lang="nl">Dag 1 van maand</text>  
+    <text lang="nl">Dag 1 van maand</text>
     <text lang="pl">Dzień 1 miesiąca</text>      
  </entry>
  <entry key="ToDay">
@@ -203,20 +209,106 @@
     <text lang="nl">Vandaag</text>
     <text lang="pl">Dzisiaj</text>    
  </entry>
-     <entry key="options.timeshift">
-        <text lang="en">Options</text>
-        <text lang="de">Einstellungen</text>
-        <text lang="fr">Options</text>
-        <text lang="es">Opciones</text>
-        <text lang="cs">Volby</text>
-        <text lang="nl">Voorkeur</text>
+ <entry key="options.timeshift">
+    <text lang="en">Options</text>
+    <text lang="de">Einstellungen</text>
+    <text lang="fr">Options</text>
+    <text lang="es">Opciones</text>
+    <text lang="cs">Volby</text>
+    <text lang="nl">Voorkeur</text>
+	<text lang="pl">Opcje</text>    
+</entry>
+<entry key="permission.denied">
+    <text lang="en">Denied</text>
+    <text lang="de">Gesperrt</text>
+    <text lang="fr">Interdit</text>
+    <text lang="es">Denegado</text>
+    <text lang="cs">Zamítnuto</text>
+    <text lang="nl">Geen toegang</text>
+	<text lang="pl">Odmowa</text>    
+</entry>
+<entry key="cleanup-age">
+    <text lang="en">Delete older than</text>
+    <text lang="de">löschen älter als</text>
+    <text lang="fr">supprimer plus de</text>
+    <text lang="es">de suprimir más</text>
+    <text lang="cs">než odstranit starší</text>
+    <text lang="nl">Verwijderen ouder dan</text>  
+	<text lang="pl">Niż usuwanie starszych</text>    
+</entry>  
+<entry key="excludedaysactive">
+    <text lang="en">Excluded days is active</text>
+    <text lang="de">Ausgeschlossen Tag aktiv</text>
+    <text lang="fr">Les jours exclus est actif</text>
+    <text lang="es">Excluidos días está activo</text>
+    <text lang="cs">Vyloučené dny je aktivní</text>
+    <text lang="nl">Uitgesloten dagen is actief</text>
+    <text lang="pl">Wykluczone dzień jest aktywny</text>
+</entry>
+<entry key="info-appointment">
+    <text lang="en">Information</text>
+    <text lang="de">Info</text>
+    <text lang="fr">Information</text>
+    <text lang="es">Info</text>
+    <text lang="cs">Informace</text>
+    <text lang="nl">Toon: afspraak</text>
+    <text lang="pl">O Rapla</text>
+</entry>
+<entry key="info-reservation">
+    <text lang="en">Information</text>
+    <text lang="de">Info</text>
+    <text lang="fr">Information</text>
+    <text lang="es">Info</text>
+    <text lang="cs">Informace</text>
+    <text lang="nl">Toon: reservatie</text>
+    <text lang="pl">O Rapla</text>
+</entry>
+    <entry key="older">
+        <text lang="en">All events older than: </text>
+        <text lang="de">??</text>
+        <text lang="fr">Tous activité plus viex que:</text>
+        <text lang="es">??</text>
+        <text lang="cs">??</text>
+        <text lang="nl">Alle activiteiten ouder dan: </text>
     </entry>
-    <entry key="permission.denied">
-        <text lang="en">Denied</text>
-        <text lang="de">Gesperrt</text>
-        <text lang="fr">Interdit</text>
-        <text lang="es">Denegado</text>
-        <text lang="cs">Zamítnuto</text>
-        <text lang="nl">Geen toegang</text>
+    <entry key="dayfieldlimits">
+        <text lang="en">[1,1000]</text>
+        <text lang="de">[1,1000]</text>
+        <text lang="fr">[1,1000]</text>
+        <text lang="es">[1,1000]</text>
+        <text lang="cs">[1,1000]</text>
+        <text lang="nl">[1,1000]</text>
     </entry>
+    <entry key="cleanup_time">
+        <text lang="en">Every day at:</text>
+        <text lang="de">??</text>
+        <text lang="fr">Cchaque jour:</text>
+        <text lang="es">??</text>
+        <text lang="cs">??</text>
+        <text lang="nl">Elke dag om:</text>
+    </entry>
+    <entry key="cleanup_date">
+        <text lang="en">GMT, from {0}</text>
+        <text lang="de">GMT, from {0}</text>
+        <text lang="fr">GMT, à partir de {0}</text>
+        <text lang="es">GMT, from {0}</text>
+        <text lang="cs">GMT, from {0}</text>
+        <text lang="nl">GMT, vanaf {0}</text>
+    </entry>       
+    <entry key="cleanup_age">
+        <text lang="en">Older than</text>
+        <text lang="de">Ã‚gÃ©s de plus de</text>
+        <text lang="fr">Ã„lter als</text>
+        <text lang="es">Mayores de</text>
+        <text lang="cs">StarÅ¡Ã­ neÅ¾</text>
+        <text lang="nl">Ouder dan</text>  
+    </entry>          
+    <entry key="days">
+        <text lang="en">Day(s)</text>
+        <text lang="de">Tag(e)</text>
+        <text lang="fr">Jour(s)</text>
+        <text lang="es">Día(s)</text>
+        <text lang="cs">Den</text>
+        <text lang="nl">dag(en)</text>
+    </entry> 
 </resources>

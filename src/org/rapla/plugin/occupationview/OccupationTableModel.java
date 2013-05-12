@@ -35,37 +35,17 @@ public class OccupationTableModel extends DefaultTableModel
     private int freeSlot= 0;
     private Date calendarStartDate;
     private int todayColumn = 0;
-		
-    public OccupationTableModel(I18nBundle i18n, int rowCount, int columnCount, Date date) {
+    private int rowCount = 0;
+    private int columnCount = 0;
+    
+    public OccupationTableModel(I18nBundle i18n, int maxRowCount, int maxColumnCount, Date date) {
         this.calendarStartDate = date;
         this.i18n = i18n;
-        occupationTable = new Object[rowCount][columnCount]; 
-    	setRowCount(rowCount);
-    	setColumnCount(columnCount);
-        /*
-        String[]columns = new String[] {
-        		 i18n.getString("resources_persons")
-        		,i18n.getString("status")
-        		,i18n.getString("free_days")
-        		,i18n.getString("start_date")
-        		,i18n.getString("end_date")
-        		,i18n.getString("reservation")
-        		,i18n.getString("appointment")
-        };
-        this.setColumnIdentifiers( columns);
-        */
+        this.rowCount = 0; // must be calculated
+        this.columnCount = CALENDAR_OUT_DAYS + 1; // must be calculated
+        occupationTable = new Object[maxRowCount][maxColumnCount]; 
     }
-    
-    /*
-    public void setOccupations(Object occupationTable[][], int rowCount, int columnCount) {
-    	setRowCount(0); 
-    	this.occupationTable = occupationTable;
-    	setRowCount(rowCount);
-    	setColumnCount(columnCount);
-    	firstFit(); 
-    }
-    */
-    
+        
     public void firstFit() {
     	if(freeSlot==0)
     		return;
@@ -140,17 +120,30 @@ public class OccupationTableModel extends DefaultTableModel
     public boolean isCellEditable(int row, int column) {
         return false;
     }
-
-    /*
+  
     public int getRowCount() {
-    	return this.rowCount;
+    	return rowCount;
     }
 
+    public void setColumnCount(int columnCount) 
+    {
+    	this.columnCount = columnCount;
+    	return;  
+    }    
+    
     public int getColumnCount() 
     {
         return columnCount;
     }
-    */ 
+    
+    public int addRow(int incr) {
+    	return rowCount+=incr;
+    }
+
+    public int addColumn(int incr) {
+    	//System.out.println("ColumnCount= " + (columnCount + incr));
+    	return columnCount+=incr;
+    }
     
     public Object getValueAt( int rowIndex, int columnIndex )
     {
@@ -161,10 +154,10 @@ public class OccupationTableModel extends DefaultTableModel
           		return occupationTable[rowIndex][columnIndex];
           	case CALENDAR_IN_DAYS: 
           		if(occupationTable[rowIndex][columnIndex] == null) 
-          			return new Integer(Integer.MAX_VALUE);
+          			return null;
           	case CALENDAR_OUT_DAYS: 
           		if(occupationTable[rowIndex][columnIndex] == null) 
-          			return new Integer(Integer.MAX_VALUE);
+          			return null;
         }
         
         return occupationTable[rowIndex][columnIndex];
@@ -177,10 +170,10 @@ public class OccupationTableModel extends DefaultTableModel
         {     
       		case CALENDAR_IN_DAYS: 
       			if(value == null) 
-      				occupationTable[rowIndex][columnIndex] = new Integer(Integer.MAX_VALUE);
+      				occupationTable[rowIndex][columnIndex] = value;
       		case CALENDAR_OUT_DAYS: 
       			if(value == null) 
-      				occupationTable[rowIndex][columnIndex] = new Integer(Integer.MAX_VALUE);
+      				occupationTable[rowIndex][columnIndex] = value;
           	default: 
           			occupationTable[rowIndex][columnIndex] = value;
         }
@@ -238,7 +231,7 @@ public class OccupationTableModel extends DefaultTableModel
     	return;
     }	
 
-	public int getSelectedRows(int c) {
+	public int getRowCount(int c) {
 		int count = 0;
 		for ( int r = 0; r < getRowCount();r++){
 			Object occCell = getValueAt(r, c);

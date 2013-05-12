@@ -23,9 +23,7 @@ import org.rapla.framework.TypedComponentRole;
 public class OccupationPlugin implements PluginDescriptor<ClientServiceContainer>
 {
 	static boolean ENABLE_BY_DEFAULT = false;
-    public static final TypedComponentRole<I18nBundle> RESOURCE_FILE = new TypedComponentRole<I18nBundle>(OccupationPlugin.class.getPackage().getName() + ".OccupationResources");
-    public static final String PLUGIN_CLASS = OccupationPlugin.class.getName();
-
+	public static final TypedComponentRole<I18nBundle> RESOURCE_FILE = new TypedComponentRole<I18nBundle>(OccupationPlugin.class.getPackage().getName() + ".OccupationResources");
 
     public String toString()
     {
@@ -37,10 +35,11 @@ public class OccupationPlugin implements PluginDescriptor<ClientServiceContainer
         if ( !config.getAttributeAsBoolean("enabled", ENABLE_BY_DEFAULT) )
         	return;
 
-        container.addContainerProvidedComponent( RESOURCE_FILE, I18nBundleImpl.class,I18nBundleImpl.createConfig( RESOURCE_FILE.getId() ) );
+        container.addContainerProvidedComponent( RESOURCE_FILE, I18nBundleImpl.class, I18nBundleImpl.createConfig( RESOURCE_FILE.getId() ) );
         container.addContainerProvidedComponent( RaplaClientExtensionPoints.CALENDAR_VIEW_EXTENSION, OccupationFactory.class);
         container.addContainerProvidedComponent( RaplaClientExtensionPoints.USER_OPTION_PANEL_EXTENSION, OccupationOption.class);
-    }
+        container.addContainerProvidedComponent( RaplaClientExtensionPoints.SYSTEM_OPTION_PANEL_EXTENSION, CleanUpOption.class );
 
+    }
 }
 

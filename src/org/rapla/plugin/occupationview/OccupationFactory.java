@@ -24,7 +24,9 @@ import org.rapla.gui.images.Images;
 
 public class OccupationFactory extends RaplaComponent implements SwingViewFactory
 {
-    public OccupationFactory( RaplaContext context ) 
+	private SwingCalendarView viewObject;
+	
+    public OccupationFactory( RaplaContext context ) throws RaplaException
     {
         super( context );
         setChildBundleName( OccupationPlugin.RESOURCE_FILE);
@@ -34,7 +36,8 @@ public class OccupationFactory extends RaplaComponent implements SwingViewFactor
 
     public SwingCalendarView createSwingView(RaplaContext context, CalendarModel model, boolean editable) throws RaplaException
     {
-        return new SwingOccupation( context, model, editable);
+    	viewObject = new SwingOccupation( context, model, editable);
+    	return viewObject;
     }
 
     public String getViewId()
@@ -60,7 +63,8 @@ public class OccupationFactory extends RaplaComponent implements SwingViewFactor
         return "O";
     }
 
-    public boolean isPrintSupported() {
-    	return false;
-    }
+	public SwingCalendarView getViewObject() {
+    	return viewObject;
+	}
+	
 }
