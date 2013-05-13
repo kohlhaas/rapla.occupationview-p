@@ -19,7 +19,6 @@ import org.rapla.entities.storage.RefEntity;
 import org.rapla.facade.RaplaComponent;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
-import org.rapla.plugin.occupationview.CleanUpOption;
 import org.rapla.server.ServerExtension;
 
 public class CleanUpService extends RaplaComponent implements ServerExtension
@@ -90,7 +89,7 @@ public class CleanUpService extends RaplaComponent implements ServerExtension
                     Reservation event = events[i];
                     if ( isOlderThan( event, endDate))
                     {
-                        getLogger().info("CleanUp Service: Cleaning event id=" + ((RefEntity)event).getShortId().toString());
+                        getLogger().info("CleanUp Service: Cleaning event id=" + ((RefEntity)event).getId().toString());
     		    		getClientFacade().remove( event );
     		    		eventCount++;
                         /*
@@ -130,7 +129,7 @@ public class CleanUpService extends RaplaComponent implements ServerExtension
     		    					Object endlife = classification.getValue("_endoflife");
     		    					if ( endlife != null && isOlderThan( endlife, getClientFacade().today()) ) {
     		    						
-    		    						getLogger().info("CleanUp Service: Cleaning alloc id=" + ((RefEntity)alloc).getShortId().toString() + " EOL=" + sdfdatetime.format(endlife));
+    		    						getLogger().info("CleanUp Service: Cleaning alloc id=" + ((RefEntity)alloc).getId().toString() + " EOL=" + sdfdatetime.format(endlife));
     		    						getClientFacade().remove( alloc );
     		    						resourceCount++;
     		    					}

@@ -141,7 +141,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
 	boolean isTableEditableTable=true;	
     Set excludeDays = null;
-    Interval selectedInterval;
+    Reservation selectedInterval;
     
     RaplaLocale raplaLocale = getRaplaLocale();
     TimeZone timezone = raplaLocale.getTimeZone();
@@ -1349,7 +1349,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			mutableReservation.setClassification(classification);
 		}
 		else if(rc == 2) { // 2 = Selected period
-			mutableReservation = (Reservation)getModification().edit(selectedInterval.getReservation());
+			mutableReservation = (Reservation)getModification().edit(selectedInterval);
 		}
 
     	Appointment appointment = null;
@@ -1361,22 +1361,25 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		*/
     	Calendar calendarEnd = raplaLocale.createCalendar();
     	calendarEnd.setTime(selectedDate);
-    	calendarEnd.add(Calendar.DATE, getReservationOptions().getnTimes() - 1 );
-    	long endTime = getCalendarOptions().getWorktimeOvernight() * DateTools.MILLISECONDS_PER_DAY
+    	int nTimes = getReservationOptions().getnTimes();
+		calendarEnd.add(Calendar.DATE, nTimes - 1 );
+    	long endTime = getCalendarOptions().isWorktimeOvernight() ? DateTools.MILLISECONDS_PER_DAY : 0
 			         + getCalendarOptions().getWorktimeEndMinutes() * DateTools.MILLISECONDS_PER_MINUTE;  	
     	calendarEnd.add(Calendar.MILLISECOND, (int) endTime);
 
-        if(getReservationOptions().getRepeatingType().is(RepeatingType.NONE)) {
-        	appointment = getClientFacade().newAppointment( calendarStart.getTime(), calendarEnd.getTime());
+    	appointment = getClientFacade().newAppointment( calendarStart.getTime(), calendarEnd.getTime());
+    	RepeatingType repeatingType = getReservationOptions().getRepeatingType();
+        if(repeatingType.is(RepeatingType.NONE)) {
         	appointment.setWholeDays(false);
         }
         else {
-        	appointment = getClientFacade().newAppointment(   calendarStart.getTime()
-        													, calendarEnd.getTime()
-        													, getReservationOptions().getRepeatingType()
-        													, getReservationOptions().isInfiniteRepeating() ? -1 : (1 * getReservationOptions().getnTimes())
-        												  );  // -1:infinite; >0:=n-times
-        	appointment.setWholeDays(true);
+        	appointment.setRepeatingEnabled( true);
+        	Repeating repeating = appointment.getRepeating();
+			repeating.setType( repeatingType);
+			// -1:infinite; >0:=n-times
+			int repeatingDuration = getReservationOptions().isInfiniteRepeating() ? -1 : (1 * nTimes);
+			repeating.setNumber(repeatingDuration);
+			appointment.setWholeDays(true);
         }
 
         mutableReservation.addAppointment(appointment);
@@ -1391,7 +1394,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		
 		int defaultInterval = -1;
 		List<String> intervalLabels = new ArrayList<String>();
-		List<Interval> intervalDates = new ArrayList<Interval>();
+		List<Reservation> intervalDates = new ArrayList<Reservation>();
 
 		for(Reservation reservation: reservations) {
 			try {
@@ -1414,7 +1417,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		    	if (start.before(selectedDate) && end.after(selectedDate))
 		    		defaultInterval = intervalLabels.size();
 		    	intervalLabels.add(raplaLocale.formatTimestamp((Date) start,timezone) + " " + raplaLocale.formatTimestamp((Date) end,timezone));
-		    	intervalDates.add(new Interval(start, end, reservation));
+		    	intervalDates.add( reservation);
 		    	
 			} catch (NoSuchElementException ex) {
 				continue;
