@@ -19,6 +19,7 @@ import org.rapla.entities.storage.RefEntity;
 import org.rapla.facade.RaplaComponent;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
+import org.rapla.plugin.occupationview.CleanUpOption;
 import org.rapla.server.ServerExtension;
 
 public class CleanUpService extends RaplaComponent implements ServerExtension

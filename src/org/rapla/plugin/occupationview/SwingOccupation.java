@@ -130,7 +130,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     
     AllocatableCellRenderer alcRenderer = new AllocatableCellRenderer();
     Locale locale = getLocale();
-    int cleanupAge = getQuery().getPreferences( null ).getEntryAsInteger(OccupationOption.CLEANUP_AGE, 32);
+    int cleanupAge = getQuery().getPreferences( null ).getEntryAsInteger(CleanUpOption.CLEANUP_AGE, 32);
 	private DecimalFormat formatDaysInOut = new DecimalFormat("#");
 	Date today = getQuery().today();
 	int columnCount = 0;

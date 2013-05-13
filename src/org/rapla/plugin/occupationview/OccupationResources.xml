@@ -311,4 +311,12 @@
         <text lang="cs">Den</text>
         <text lang="nl">dag(en)</text>
     </entry> 
+        <entry key="OccupationCleanup">
+        <text lang="en">OccupationCleanup</text>
+        <text lang="de">..</text>
+        <text lang="fr">..</text>
+        <text lang="es">..</text>
+        <text lang="cs">..</text>
+        <text lang="nl">Bezetting cleanup</text>
+    </entry> 
 </resources>

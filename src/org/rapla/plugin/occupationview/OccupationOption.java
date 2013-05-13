@@ -27,12 +27,13 @@ import org.rapla.components.layout.TableLayout;
 import org.rapla.entities.configuration.Preferences;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
+import org.rapla.framework.TypedComponentRole;
 import org.rapla.gui.OptionPanel;
 import org.rapla.gui.RaplaGUIComponent;
 
 public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
 	
-	public final static String MONTHS = "org.rapla.plugin.occupation.Months";
+	public final static TypedComponentRole<Integer> MONTHS = new TypedComponentRole<Integer>("org.rapla.plugin.occupation.Months");
     JPanel panel = new JPanel();
     RaplaNumber months = new RaplaNumber(new Double(1),new Double(1),new Double(12), false);
     RaplaNumber cleanupAge = new RaplaNumber(new Double(1),new Double(0),new Double(999), false);
@@ -40,10 +41,9 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
     Preferences preferences;
     
 // BJO 00000101
-	public final static String START_DAY  = "org.rapla.plugin.occupation.StartDay";
+	public final static TypedComponentRole<String> START_DAY  = new TypedComponentRole<String>("org.rapla.plugin.occupation.StartDay");
     public final static String FIRSTDAY = "FirstDay";
     public final static String NOSELECTION = "nothing_selected";
-    public final static String CLEANUP_AGE= "org.rapla.plugin.occupation.cleanup-age";
     JComboBox startDaySelector = new JComboBox( new String[] {  NOSELECTION
     		  												  , FIRSTDAY
 															 }
@@ -103,7 +103,7 @@ public class OccupationOption extends RaplaGUIComponent implements OptionPanel {
 
     public void commit() {
         int times = months.getNumber().intValue();
-        preferences.putEntry( MONTHS,"" + times);
+        preferences.putEntry( MONTHS,times);
         
         String day = (String) startDaySelector.getSelectedItem();
         preferences.putEntry( START_DAY, day);
