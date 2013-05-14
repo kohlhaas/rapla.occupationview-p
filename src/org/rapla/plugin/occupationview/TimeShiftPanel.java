@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -41,14 +43,13 @@ import org.rapla.components.calendar.RaplaCalendar;
 import org.rapla.components.calendar.RaplaNumber;
 import org.rapla.components.calendar.RaplaTime;
 import org.rapla.components.layout.TableLayout;
-import org.rapla.components.util.DateTools;
 import org.rapla.facade.CalendarModel;
 import org.rapla.framework.Disposable;
 import org.rapla.framework.RaplaContext;
 import org.rapla.framework.RaplaException;
 import org.rapla.gui.RaplaGUIComponent;
-import org.rapla.gui.toolkit.RaplaWidget;
 import org.rapla.gui.toolkit.RaplaButton;
+import org.rapla.gui.toolkit.RaplaWidget;
 
 public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, RaplaWidget
 {
@@ -142,8 +143,9 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
        
         startTimeLabel.setText(getString("start_time"));
         calendarPanel.add( startTimeLabel );
-        startTime = new RaplaTime();
-        startTime.setTimeZone(DateTools.getTimeZone());
+        Locale locale = getRaplaLocale().getLocale();
+		TimeZone timeZone = getRaplaLocale().getTimeZone();
+		startTime = new RaplaTime(locale, timeZone);
         startTime.setRowsPerHour(1);
         startTime.setTime(00,00);
         calendarPanel.add(startTime);
@@ -151,8 +153,7 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
 
         endTimeLabel.setText(getString("end_time"));
         calendarPanel.add( endTimeLabel );
-        endTime =  new RaplaTime();
-        endTime.setTimeZone(DateTools.getTimeZone());
+        endTime =  new RaplaTime( locale, timeZone);
         endTime.setRowsPerHour(1);
         endTime.setTime(00,00);
         calendarPanel.add(endTime);
