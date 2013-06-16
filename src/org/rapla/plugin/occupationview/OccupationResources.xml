@@ -319,4 +319,31 @@
         <text lang="cs">..</text>
         <text lang="nl">Bezetting cleanup</text>
     </entry> 
+    <entry key="active">
+        <text lang="en">Active</text>
+        <text lang="de">..</text>
+        <text lang="fr">..</text>
+        <text lang="es">..</text>
+        <text lang="cs">..</text>
+        <text lang="nl">Actief</text>
+    </entry>
+       <entry key="compact-columns">
+        <text lang="en">Compact</text>
+        <text lang="de">Compact</text>
+        <text lang="fr">Compact</text>
+        <text lang="es">Compactas</text>
+        <text lang="cs">Kompaktní</text>
+        <text lang="nl">Compact</text>
+        <text lang="pl">Kompaktowy</text>
+   </entry>
+    <entry key= "event.config.error">
+    	<text lang="en">Event configuration options not found.</text>
+    	<text lang="de">Gespeichert Kalender {0} nicht gefunden</text>
+    	<text lang="fr">Calendrier déjà enregistré {0} pas trouvée</text>
+    	<text lang="es">Calendario guardado {0} nebyl nalezen</text>
+    	<text lang="cs">Uložené kalendář {0} Obsazenost</text>
+    	<text lang="nl">Event configuratie opties niet gevonden.</text>
+    	<text lang="pl">Zapisane kalendarza {0} nie znaleziono</text>
+    </entry>
+     
 </resources>

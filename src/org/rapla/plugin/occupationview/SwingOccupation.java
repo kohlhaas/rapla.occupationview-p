@@ -78,8 +78,10 @@ import org.rapla.entities.Category;
 import org.rapla.entities.CategoryAnnotations;
 import org.rapla.entities.EntityNotFoundException;
 import org.rapla.entities.User;
+import org.rapla.entities.configuration.RaplaConfiguration;
 import org.rapla.entities.domain.Allocatable;
 import org.rapla.entities.domain.Appointment;
+import org.rapla.entities.domain.AppointmentBlock;
 import org.rapla.entities.domain.Repeating;
 import org.rapla.entities.domain.RepeatingType;
 import org.rapla.entities.domain.Reservation;
@@ -99,7 +101,6 @@ import org.rapla.framework.RaplaLocale;
 import org.rapla.gui.RaplaGUIComponent;
 import org.rapla.gui.SwingCalendarView;
 import org.rapla.gui.internal.action.AppointmentAction;
-import org.rapla.gui.internal.action.ReservationAction;
 import org.rapla.gui.toolkit.DialogUI;
 import org.rapla.gui.toolkit.RaplaColorList;
 import org.rapla.gui.toolkit.RaplaFrame;
@@ -733,7 +734,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        			else
 	            			cellBorder.setThickness(0, EAST);
 	        		
-	    	        cellBorder.setThickness(thickness, SOUTH);
+ 	    	        cellBorder.setThickness(thickness, SOUTH);
 
 	        		Color color = getColorForClassifiable( appointment.getReservation() );
 	    	       	if(color==null)
@@ -1142,7 +1143,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			    editItem.addActionListener(menuActionAppointment);
 			    editItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
 			    popup.add(editItem);
-			    
+			    /*
 		        JMenuItem splitItem = new JMenuItem(getString("move_internal"),getIcon( "icon.split"));
 		        splitItem.setActionCommand("split");
 		        splitItem.addActionListener(menuActionAppointment);
@@ -1154,7 +1155,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		        endItem.addActionListener(menuActionAppointment);
 		        endItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
 			    popup.add(endItem);
- 
+ 				*/
 			    JMenuItem deleteItem = new JMenuItem(getString("delete"),getIcon( "icon.delete"));
 			    deleteItem.setActionCommand("delete");
 			    deleteItem.addActionListener(menuActionAppointment);
@@ -1225,8 +1226,10 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	            		if(occCell.object instanceof Appointment) {
 	            			Reservation reservation = occCell.getAppointment().getReservation();
 				    		try {
-				    			if(canModify(reservation) || getQuery().canExchangeAllocatables(reservation))
-				    				getReservationController().edit((Appointment) occCell.object, occupationTableModel.getColumnDate(c));
+				    			if(canModify(reservation) || getQuery().canExchangeAllocatables(reservation)) {
+				        			AppointmentBlock appBlock = new AppointmentBlock(occCell.getAppointment());
+				    				getReservationController().edit(appBlock);//, occupationTableModel.getColumnDate(c));
+				    			}
 				        	} catch (RaplaException e) {
 				        			// TODO Auto-generated catch block
 				        			e.printStackTrace();
@@ -1262,47 +1265,55 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
               
         	if(evt.getActionCommand().equals("new")) {
         		Appointment newApp = newReservation(occupationTableModel.getColumnDate(c), (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE));
-        		if(newApp !=null)
-        			getReservationController().edit(newApp, occupationTableModel.getColumnDate(c));
-        		/*
-        		getReservationController().edit(((Appointment) obj), occupationTableModel.getColumnDate(c)); 
-        		*/
+        		if(newApp !=null) {
+        			AppointmentBlock appBlock = new AppointmentBlock(newApp);
+        			getReservationController().edit(appBlock);//, occupationTableModel.getColumnDate(c));
+        		}
         	}
         	else if(evt.getActionCommand().equals("edit")) {
-        			getReservationController().edit(((Appointment) obj), occupationTableModel.getColumnDate(c));
+        			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+        			getReservationController().edit(appBlock);//, occupationTableModel.getColumnDate(c));
         	}
         	else if(evt.getActionCommand().equals("delete")) {
         			AppointmentAction deleteAction = new AppointmentAction( getContext(), getComponent(), getPoint());
         			// get selected date
-        			deleteAction.setDelete((Appointment) obj,occupationTableModel.getColumnDate(c));
+        			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+        			deleteAction.setDelete(appBlock);//,occupationTableModel.getColumnDate(c));
             		deleteAction.actionPerformed(evt);
         	}	
+        	/*
         	else if(evt.getActionCommand().equals("split")) {
     			AppointmentAction splitAction = new AppointmentAction( getContext(), getComponent(), point);
     			// get selected date
-    			splitAction.setSplit((Appointment) obj,occupationTableModel.getColumnDate(c));
+    			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+    			splitAction.setSplit(appBlock, occupationTableModel.getColumnDate(c));
         		splitAction.actionPerformed(evt);
         	}	
 
         	else if(evt.getActionCommand().equals("end")) {
     			AppointmentAction endAction = new AppointmentAction( getContext(), getComponent(), point);
     			// get selected date
-    			endAction.setEnd((Appointment) obj,occupationTableModel.getColumnDate(c));
+    			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+    			endAction.setEnd(appBlock, occupationTableModel.getColumnDate(c));
         		endAction.actionPerformed(evt);
         	}	
-
+			*/
         	else if(evt.getActionCommand().equals("info")) {
         		if(obj instanceof Appointment) {
         			AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());
-    				viewAction.setView((Appointment) obj);
+        			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+    				viewAction.setView(appBlock);
     				viewAction.actionPerformed(evt);
-    			}
+    			} 
+        		/*
     			else {
         			ReservationAction viewAction = new ReservationAction( getContext(), getComponent(), getPoint());
         			viewAction.setView((Reservation) obj);
         			viewAction.actionPerformed(evt);
-        		}
+        		} 
+        		*/
         	}
+        	
 	        else if(evt.getActionCommand().equals("archive")) {
 	        		Allocatable alloc = (Allocatable) obj;
 	                AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
@@ -1387,7 +1398,35 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         return appointment;
     }
     
-    private int selectIntervalDialog(Date selectedDate, Allocatable allocatable) throws RaplaException {
+    private ReservationOptions getReservationOptions() {
+        RaplaConfiguration conf = null;
+        ReservationOptions options = null;
+        User user;
+		try {
+			user = getUser();
+
+        if ( user != null) 
+            conf = getQuery().getPreferences(user).getEntry(ReservationOptionsImpl.RESERVATION_OPTIONS);
+        
+        // Default settings enforced by admin
+        if ( conf == null )
+            conf = getQuery().getPreferences(null).getEntry(ReservationOptionsImpl.RESERVATION_OPTIONS);        
+    	if ( conf == null) {
+    		options = new ReservationOptionsImpl();
+			throw new EntityNotFoundException(getString("event.config.error"));
+    	}
+    	else
+    		options = new ReservationOptionsImpl(conf);
+		} catch (RaplaException e) {
+			getLogger().error(e.getMessage());
+			showException(e, getMainComponent() );
+		}
+		return options;
+    }
+// BJO 00000120
+
+
+	private int selectIntervalDialog(Date selectedDate, Allocatable allocatable) throws RaplaException {
 		Reservation[] reservations = getQuery().getReservationsForAllocatable(new Allocatable[] { allocatable }, null, null, null);
 		if(reservations.length == 0)
 			return 3;

@@ -39,7 +39,7 @@ public class OccupationPlugin implements PluginDescriptor<ClientServiceContainer
         container.addContainerProvidedComponent( RaplaClientExtensionPoints.CALENDAR_VIEW_EXTENSION, OccupationFactory.class);
         container.addContainerProvidedComponent( RaplaClientExtensionPoints.USER_OPTION_PANEL_EXTENSION, OccupationOption.class);
         container.addContainerProvidedComponent( RaplaClientExtensionPoints.SYSTEM_OPTION_PANEL_EXTENSION, CleanUpOption.class );
-
+        container.addContainerProvidedComponent ( RaplaClientExtensionPoints.USER_OPTION_PANEL_EXTENSION, ReservationOption.class );
     }
 }
 

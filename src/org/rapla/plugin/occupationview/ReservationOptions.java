@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------*
- | Copyright (C) 2006 Christopher Kohlhaas                                  |
+ | Copyright (C) 2011 Bob Jordaens                                          |
  |                                                                          |
  | This program is free software; you can redistribute it and/or modify     |
  | it under the terms of the GNU General Public License as published by the |
@@ -10,24 +10,23 @@
  | program with every library, which license fulfills the Open Source       |
  | Definition as published by the Open Source Initiative (OSI).             |
  *--------------------------------------------------------------------------*/
-package org.rapla.plugin.occupationview.server;
-import org.rapla.framework.Configuration;
-import org.rapla.framework.PluginDescriptor;
-import org.rapla.server.RaplaServerExtensionPoints;
-import org.rapla.server.ServerServiceContainer;
+package org.rapla.plugin.occupationview;
+import org.rapla.entities.domain.RepeatingEnding;
+import org.rapla.entities.domain.RepeatingType;
 
-public class CleanUpServerPlugin implements PluginDescriptor<ServerServiceContainer>
-{
 
-	static boolean ENABLE_BY_DEFAULT = true;
+/** This class contains the default user preferences for creation of reservations and appointment */
+//BJO 00000120
+public interface ReservationOptions {
+    public static final String ROLE = ReservationOptions.class.getName();
 
-    public String toString() {
-        return "Cleanup";
-    }
-
-    public void provideServices(ServerServiceContainer container, Configuration config) {
-    	if ( !config.getAttributeAsBoolean("enabled", ENABLE_BY_DEFAULT) )
-    		return;
-        container.addContainerProvidedComponent( RaplaServerExtensionPoints.SERVER_EXTENSION, CleanUpService.class, config );
-    } 
+    boolean isInfiniteRepeating();
+	boolean isNtimesRepeating();
+	boolean isUntilRepeating();
+	int getnTimes();
+	RepeatingEnding getRepeatingDuration();
+	RepeatingType getRepeatingType();
+	String getEventType();
+	int getRepeating();
+	//int getSplitTimeMinutes();
 }
