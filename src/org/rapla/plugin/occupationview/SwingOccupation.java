@@ -1143,7 +1143,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			    editItem.addActionListener(menuActionAppointment);
 			    editItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
 			    popup.add(editItem);
-			    /*
+
 		        JMenuItem splitItem = new JMenuItem(getString("move_internal"),getIcon( "icon.split"));
 		        splitItem.setActionCommand("split");
 		        splitItem.addActionListener(menuActionAppointment);
@@ -1155,7 +1155,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		        endItem.addActionListener(menuActionAppointment);
 		        endItem.setEnabled(canModify(reservation) || getQuery().canExchangeAllocatables(reservation));
 			    popup.add(endItem);
- 				*/
+ 				
 			    JMenuItem deleteItem = new JMenuItem(getString("delete"),getIcon( "icon.delete"));
 			    deleteItem.setActionCommand("delete");
 			    deleteItem.addActionListener(menuActionAppointment);
@@ -1281,7 +1281,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         			deleteAction.setDelete(appBlock);//,occupationTableModel.getColumnDate(c));
             		deleteAction.actionPerformed(evt);
         	}	
-        	/*
+        	
         	else if(evt.getActionCommand().equals("split")) {
     			AppointmentAction splitAction = new AppointmentAction( getContext(), getComponent(), point);
     			// get selected date
@@ -1297,7 +1297,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     			endAction.setEnd(appBlock, occupationTableModel.getColumnDate(c));
         		endAction.actionPerformed(evt);
         	}	
-			*/
+			
         	else if(evt.getActionCommand().equals("info")) {
         		if(obj instanceof Appointment) {
         			AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());

@@ -327,15 +327,6 @@
         <text lang="cs">..</text>
         <text lang="nl">Actief</text>
     </entry>
-       <entry key="compact-columns">
-        <text lang="en">Compact</text>
-        <text lang="de">Compact</text>
-        <text lang="fr">Compact</text>
-        <text lang="es">Compactas</text>
-        <text lang="cs">Kompaktní</text>
-        <text lang="nl">Compact</text>
-        <text lang="pl">Kompaktowy</text>
-   </entry>
     <entry key= "event.config.error">
     	<text lang="en">Event configuration options not found.</text>
     	<text lang="de">Gespeichert Kalender {0} nicht gefunden</text>

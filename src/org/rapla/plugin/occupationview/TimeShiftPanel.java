@@ -186,7 +186,7 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         dateSelection.addDateChangeListener( listener );
         todayButton.addActionListener(listener);
         
-        optionsPanel.add( new JLabel(getString("compact-columns")),"8,1,f,f"  );
+        optionsPanel.add( new JLabel(getString("compact")),"8,1,f,f"  );
         optionsPanel.add( compactField,"10,1,f,f");
         compactField.addActionListener( listener );
         compactField.setSelected( getCalendarOptions().isCompactColumns() );
