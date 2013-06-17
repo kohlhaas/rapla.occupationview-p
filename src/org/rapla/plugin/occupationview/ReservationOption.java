@@ -43,7 +43,8 @@ import org.rapla.gui.internal.common.NamedListCellRenderer;
 //BJO 00000120
 public class ReservationOption extends RaplaGUIComponent implements OptionPanel //, ActionListener
 {
-    JPanel panel = new JPanel();
+    private static final String NO_REPEATING = "no_repeating";
+	JPanel panel = new JPanel();
     Preferences preferences;
     ReservationOptions options;
 
@@ -57,12 +58,12 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
 
 
 
-    JComboBox repeatingType = new JComboBox( new RepeatingType[] {
-		          RepeatingType.DAILY
-		        , RepeatingType.WEEKLY
-		        , RepeatingType.MONTHLY
-		        , RepeatingType.YEARLY
-		        , RepeatingType.NONE
+    JComboBox repeatingType = new JComboBox( new String[] {
+		          RepeatingType.DAILY.toString()
+		        , RepeatingType.WEEKLY.toString()
+		        , RepeatingType.MONTHLY.toString()
+		        , RepeatingType.YEARLY.toString()
+		        , NO_REPEATING
 		  });
 
     JComboBox eventTypeSelector;
@@ -154,7 +155,15 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         nTimesField.setEnabled(options.isNtimesRepeating());
 // BJO 00000012
 // BJO 00000052
-        repeatingType.setSelectedItem( options.getRepeatingType());
+        RepeatingType repeatingTypeValue = options.getRepeatingType();
+        if ( repeatingTypeValue != null)
+        {
+        	repeatingType.setSelectedItem( repeatingTypeValue);
+        }
+        else
+        {
+        	repeatingType.setSelectedIndex(4);
+        }
 // BJO 00000052
 // BJO 00000063 
         String eventType = options.getEventType();
@@ -199,11 +208,22 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
 
 // BJO 00000052   
         DefaultConfiguration repeatingType = new DefaultConfiguration(ReservationOptionsImpl.REPEATINGTYPE); 
-        RepeatingType repeatingTypeValue =  (RepeatingType)this.repeatingType.getSelectedItem();
+        String repeatingTypeValue =  (String)this.repeatingType.getSelectedItem();
         if ( repeatingTypeValue != null )
-        	repeatingType.setValue(  repeatingTypeValue.toString());
+        {
+        	if ( repeatingTypeValue.equals(NO_REPEATING))
+        	{
+        		repeatingType.setValue(  null);
+        	}
+        	else
+        	{
+        		repeatingType.setValue(  repeatingTypeValue.toString());
+        	}
+        }
         else
-        	repeatingType.setValue( RepeatingType.DAILY.toString() );        
+        {
+        	repeatingType.setValue( RepeatingType.DAILY.toString() );     
+        }
         reservationOptions.addChild( repeatingType);
 // BJO 00000052
 

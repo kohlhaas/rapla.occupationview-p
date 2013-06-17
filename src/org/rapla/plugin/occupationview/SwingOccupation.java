@@ -72,6 +72,7 @@ import javax.swing.table.TableColumnModel;
 import org.rapla.client.ClientService;
 import org.rapla.components.calendar.DateChangeEvent;
 import org.rapla.components.calendar.DateChangeListener;
+import org.rapla.components.calendar.RaplaTime;
 import org.rapla.components.tablesorter.TableSorter;
 import org.rapla.components.util.DateTools;
 import org.rapla.entities.Category;
@@ -1263,8 +1264,9 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
         	Point point = new Point(100,25);
               
-        	if(evt.getActionCommand().equals("new")) {
-        		Appointment newApp = newReservation(occupationTableModel.getColumnDate(c), (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE));
+        	Date selectedDate = occupationTableModel.getColumnDate(c);
+			if(evt.getActionCommand().equals("new")) {
+        		Appointment newApp = newReservation(selectedDate, (AllocationCell) occupationTableModel.getValueAt(r, OccupationTableModel.CALENDAR_RESOURCE));
         		if(newApp !=null) {
         			AppointmentBlock appBlock = new AppointmentBlock(newApp);
         			getReservationController().edit(appBlock);//, occupationTableModel.getColumnDate(c));
@@ -1283,19 +1285,14 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	}	
         	
         	else if(evt.getActionCommand().equals("split")) {
-    			AppointmentAction splitAction = new AppointmentAction( getContext(), getComponent(), point);
     			// get selected date
     			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
-    			splitAction.setSplit(appBlock, occupationTableModel.getColumnDate(c));
-        		splitAction.actionPerformed(evt);
+    			splitAppointment(appBlock, selectedDate, getComponent(), point);
         	}	
 
         	else if(evt.getActionCommand().equals("end")) {
-    			AppointmentAction endAction = new AppointmentAction( getContext(), getComponent(), point);
-    			// get selected date
-    			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
-    			endAction.setEnd(appBlock, occupationTableModel.getColumnDate(c));
-        		endAction.actionPerformed(evt);
+       			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
+    			endAppointment(appBlock, selectedDate, getComponent(), point);
         	}	
 			
         	else if(evt.getActionCommand().equals("info")) {
@@ -1313,6 +1310,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         		} 
         		*/
         	}
+        	
         	
 	        else if(evt.getActionCommand().equals("archive")) {
 	        		Allocatable alloc = (Allocatable) obj;
@@ -1333,6 +1331,128 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		}
 	  }
 	}
+    
+ // BJO 00000040
+	private void deleteSilentAppointment(AppointmentBlock appointmentBlock,Component sourceComponent,Point point) throws RaplaException {
+    	Appointment appointment = appointmentBlock.getAppointment();
+        Reservation reservation = appointment.getReservation();
+        getModification().remove( reservation);
+    }
+	// BJO 00000040
+
+    // BJO 00000141
+	private void splitAppointment(AppointmentBlock appointmentBlock,Date selectedDate,Component sourceComponent,Point point) throws RaplaException {
+    	Appointment appointment = appointmentBlock.getAppointment();
+    	// no Repeating and Repeating
+    	Date splitTime = new Date(selectedDate.getTime());
+    	splitTime = showTimeDialog(selectedDate, sourceComponent, point,"move_internal");
+    	if(splitTime == null)
+    		return;
+    	
+    	Repeating repeating   = appointment.getRepeating();
+    	if(repeating != null) {
+    		// Repeating
+        	if(!repeating.isDaily())
+        		return;
+        	
+        	int days = repeating.getNumber();
+
+        	if(DateTools.isMidnight(splitTime) && (days < 2 && days != -1))
+    			return;
+	        
+	    	// left part 
+        	Reservation modifiableReservation = getModification().edit(appointment.getReservation());
+        	Appointment leftpart = modifiableReservation.findAppointment(appointment);
+        	leftpart.getRepeating().setEnd(splitTime); // repeat until date
+    	    
+    	    // right part
+    	    Appointment rightpart  = getModification().newAppointment(splitTime, DateTools.addDay(splitTime), repeating.getType(), 0);
+    	    rightpart.getRepeating().setEnd(appointment.getMaxEnd()); // repeat until date
+    	    modifiableReservation.addAppointment(rightpart);   
+    	    
+    	    getModification().store( modifiableReservation); 
+    	}
+    	else { 
+    		// No repeating
+	    	if(DateTools.isMidnight(splitTime) & DateTools.countDays(appointment.getStart(), appointment.getEnd()) < 2)
+	    			return;
+	    	
+	    	// left part 
+        	Reservation modifiableReservation = getModification().edit(appointment.getReservation());
+        	Appointment leftpart = modifiableReservation.findAppointment(appointment);
+        	leftpart.move(appointment.getStart(), splitTime);
+	               	
+	        // right part
+    	    Appointment rightpart  = getModification().newAppointment(splitTime, appointment.getEnd());
+	        modifiableReservation.addAppointment(rightpart);
+	        
+	        getModification().store( modifiableReservation);       
+        }
+    }
+    
+	private Date showTimeDialog(Date selectedDate, Component sourceComponent, Point point, String menu) throws RaplaException {
+	    RaplaTime selectedTime;
+	    selectedTime = createRaplaTime();
+	    selectedTime.setRowsPerHour( 2 );
+	    long endTime = getCalendarOptions().getWorktimeEndMinutes();
+	    selectedTime.setTime((int) endTime / 60, (int) endTime % 60)
+	    ;
+	    //selectedTime.setTime(splitStartDate);	    
+	    final DialogUI dialog = DialogUI.create(
+	             getContext()
+	            ,sourceComponent
+	            ,true
+	            ,selectedTime
+	            ,new String[] { getString("apply"),getString("cancel")}
+	            );
+	    dialog.setTitle(getI18n().getString(menu) + " " + getI18n().getString("time"));
+	    dialog.setIcon(getIcon("icon.split"));
+	    dialog.start(point);
+	    if (dialog.getSelectedIndex() == 0) {
+			return getRaplaLocale().toDate(selectedDate,selectedTime.getTime());
+	    }
+    	return null;
+	}
+	
+	private void endAppointment(AppointmentBlock appointmentBlock,Date selectedDate,Component sourceComponent,Point point) throws RaplaException {
+    	Appointment appointment = appointmentBlock.getAppointment();
+    	// no Repeating and Repeating
+    	Date splitTime = new Date(selectedDate.getTime());
+    	splitTime = showTimeDialog(selectedDate, sourceComponent, point,"move_out");
+    	if(splitTime == null)
+    		return;
+    	
+	    Appointment original  = getModification().clone(appointment);    	
+    	Repeating repeating   = original.getRepeating();
+    	if(repeating != null) {
+    		// Repeating
+        	if(!repeating.isDaily())
+        		return;
+        	
+        	int days = repeating.getNumber();
+
+        	if(DateTools.isMidnight(splitTime) && (days < 2 && days != -1))
+    			return;
+    	       
+	    	// left part 
+        	Reservation modifiableReservation = getModification().edit(appointment.getReservation());
+        	Appointment leftpart = modifiableReservation.findAppointment(appointment);
+        	leftpart.getRepeating().setEnd(splitTime); // repeat until date
+	        getModification().store( modifiableReservation);
+    	}
+    	else { 
+    		// No repeating
+	    	if(DateTools.isMidnight(splitTime) & DateTools.countDays(appointment.getStart(), appointment.getEnd()) < 2)
+	    			return;
+
+	    	// left part 
+        	Reservation modifiableReservation = getModification().edit(appointment.getReservation());
+        	Appointment leftpart = modifiableReservation.findAppointment(appointment);
+        	leftpart.move(original.getStart(), splitTime);
+	        getModification().store( modifiableReservation);
+         }
+    }
+    // BJO 00000141  
     
     public Appointment newReservation(Date selectedDate, AllocationCell alcCell) throws RaplaException {
     	Calendar calendarStart = raplaLocale.createCalendar();
@@ -1380,8 +1500,9 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
     	appointment = getClientFacade().newAppointment( calendarStart.getTime(), calendarEnd.getTime());
     	RepeatingType repeatingType = getReservationOptions().getRepeatingType();
-        if(repeatingType.is(RepeatingType.NONE)) {
+        if(repeatingType == null) {
         	appointment.setWholeDays(false);
+        	appointment.setRepeatingEnabled( false);
         }
         else {
         	appointment.setRepeatingEnabled( true);

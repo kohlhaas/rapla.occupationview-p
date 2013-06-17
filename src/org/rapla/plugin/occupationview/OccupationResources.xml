@@ -336,5 +336,53 @@
     	<text lang="nl">Event configuratie opties niet gevonden.</text>
     	<text lang="pl">Zapisane kalendarza {0} nie znaleziono</text>
     </entry>
-     
+         <entry key="compact">
+        <text lang="en">Compact</text>
+        <text lang="de">Compact</text>
+        <text lang="fr">Compact</text>
+        <text lang="es">Compactas</text>
+        <text lang="cs">Kompaktní</text>
+        <text lang="nl">Compact</text>
+        <text lang="pl">Kompaktowy</text>
+   </entry>
+     <entry key="time">
+        <text lang="en">time</text>
+        <text lang="de">zeit</text>
+        <text lang="fr">heure</text>
+        <text lang="es">hora</text>
+        <text lang="cs">čas</text>
+        <text lang="nl">tijd</text>
+        <text lang="pl">czas</text>
+    </entry>
+    <entry key="move_in">
+   		<text lang="en">arrival</text>
+   		<text lang="de">Ankunft</text>
+   		<text lang="fr">arrivée</text>
+   		<text lang="es">llegada</text>
+   		<text lang="cs">příjezd</text>
+   		<text lang="nl">Opname</text>  
+		<text lang="pl">przylot</text>    
+	</entry>
+	<entry key="move_out">
+  		<text lang="en">departure</text>
+   		<text lang="de">Abfahrt</text>
+   		<text lang="fr">départ</text>
+   		<text lang="es">salida</text>
+   		<text lang="cs">odjezd</text>
+   		<text lang="nl">Ontslag</text>  
+		<text lang="pl">odjazd</text>    
+	</entry>
+	<entry key="move_internal">
+   		<text lang="en">move</text>
+   		<text lang="de">bewegen</text>
+   		<text lang="fr">déplacer</text>
+   		<text lang="es">mover</text>
+   		<text lang="cs">pohyb</text>
+   		<text lang="nl">Verhuis</text>  
+		<text lang="pl">przenieść</text>    
+	</entry>    
+	<entry key="selectperiod">
+    	<text lang="en">Select period</text>
+    	<text lang="nl">Selecteer periode</text>
+	</entry>
 </resources>
