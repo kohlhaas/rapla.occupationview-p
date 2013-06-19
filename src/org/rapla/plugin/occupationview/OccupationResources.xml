@@ -246,21 +246,12 @@
     <text lang="pl">Wykluczone dzień jest aktywny</text>
 </entry>
 <entry key="info-appointment">
-    <text lang="en">Information</text>
+    <text lang="en">Reservation details</text>
     <text lang="de">Info</text>
     <text lang="fr">Information</text>
     <text lang="es">Info</text>
     <text lang="cs">Informace</text>
-    <text lang="nl">Toon: afspraak</text>
-    <text lang="pl">O Rapla</text>
-</entry>
-<entry key="info-reservation">
-    <text lang="en">Information</text>
-    <text lang="de">Info</text>
-    <text lang="fr">Information</text>
-    <text lang="es">Info</text>
-    <text lang="cs">Informace</text>
-    <text lang="nl">Toon: reservatie</text>
+    <text lang="nl">Reservatie details</text>
     <text lang="pl">O Rapla</text>
 </entry>
     <entry key="older">

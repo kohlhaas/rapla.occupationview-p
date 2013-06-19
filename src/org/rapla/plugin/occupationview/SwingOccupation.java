@@ -307,7 +307,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         Iterator<Allocatable> it = allocatableList.iterator();
         calendarDS = timeShift.getSelectedStartTime(); // start midnight
         calendarDE = timeShift.getSelectedEndTime(); // end midnight
-    	//System.out.println("Selected - Start: " + calendarDS.getTime() + " Stop: " + calendarDE.getTime());
+    	System.out.println("Selected - Start: " + calendarDS.getTime() + " Stop: " + calendarDE.getTime());
 
         // calculate number of columns required to display from calendar
         Calendar calendarTmp = (Calendar) calendarDS.clone();
@@ -1163,23 +1163,22 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 			    deleteItem.setEnabled(canModify(reservation));
 			    popup.add(deleteItem);
 			}
-        
-	        JMenuItem viewItemReservation = new JMenuItem(getString("info-reservation"),getIcon( "icon.help"));
-	        viewItemReservation.setActionCommand("info");
-	        viewItemReservation.addActionListener(menuActionReservation);
+			// BJO 0000000104
+	        JMenuItem viewItemAppointment = new JMenuItem(getString("info-appointment"),getIcon( "icon.help"));
+	        viewItemAppointment.setActionCommand("info");
+	        viewItemAppointment.addActionListener(menuActionAppointment);
 	        User owner = reservation.getOwner();
 	        try 
 	        {
 	            User user = getUser();
 	            boolean canView = getQuery().canReadReservationsFromOthers( user) || user.equals( owner);
-	            viewItemReservation.setEnabled( canView);
+	            viewItemAppointment.setEnabled( canView);
 	        } 
 	        catch (RaplaException ex)
 	        {
 	            getLogger().error( "Can't get user",ex);
 	        }
-	        popup.add(viewItemReservation);
-
+	        popup.add(viewItemAppointment);           
 	        popup.show( table, point.x, point.y); 
 	    }
 	    
@@ -1296,21 +1295,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	}	
 			
         	else if(evt.getActionCommand().equals("info")) {
-        		if(obj instanceof Appointment) {
         			AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());
         			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
     				viewAction.setView(appBlock);
-    				viewAction.actionPerformed(evt);
-    			} 
-        		else if(obj instanceof Reservation) {
-    				AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());
-    				AppointmentBlock appBlock = new AppointmentBlock(((Reservation)obj).getAppointments()[0]);
-    				viewAction.setView(appBlock);
-        			viewAction.actionPerformed(evt);
-        		} 
-        	}
-        	
-        	
+    				viewAction.actionPerformed(evt); 
+        		}
 	        else if(evt.getActionCommand().equals("archive")) {
 	        		Allocatable alloc = (Allocatable) obj;
 	                AttributeType type = EndOfLifeArchiver.getEndOfLifeType(alloc);
