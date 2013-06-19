@@ -307,7 +307,12 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         Iterator<Allocatable> it = allocatableList.iterator();
         calendarDS = timeShift.getSelectedStartTime(); // start midnight
         calendarDE = timeShift.getSelectedEndTime(); // end midnight
-    	System.out.println("Selected - Start: " + calendarDS.getTime() + " Stop: " + calendarDE.getTime());
+
+        Date startTime = calendarDS.getTime();
+		Date endTime = calendarDE.getTime();
+		String startString = raplaLocale.formatDateShort(startTime) +" "+ raplaLocale.formatTime(startTime);
+		String endString = raplaLocale.formatDateShort(endTime) +" "+ raplaLocale.formatTime(endTime);
+		getLogger().info("Selected - Start: " +         startString  + " Stop: " + endString);
 
         // calculate number of columns required to display from calendar
         Calendar calendarTmp = (Calendar) calendarDS.clone();
@@ -318,7 +323,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         }
         int columnCount = totalDays + OccupationTableModel.CALENDAR_EVENTS ; // + for fixed columns
         //Object occupationTable[][] = new Object[rowCount][columnCount]; 
-        occupationTableModel = new OccupationTableModel(getI18n(), rowCount, columnCount, calendarDS.getTime());
+        occupationTableModel = new OccupationTableModel(getI18n(), rowCount, columnCount, startTime);
      
         
 // Sorting block
