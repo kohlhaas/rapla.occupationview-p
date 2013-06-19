@@ -1302,13 +1302,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     				viewAction.setView(appBlock);
     				viewAction.actionPerformed(evt);
     			} 
-        		/*
     			else {
         			ReservationAction viewAction = new ReservationAction( getContext(), getComponent(), getPoint());
         			viewAction.setView((Reservation) obj);
         			viewAction.actionPerformed(evt);
         		} 
-        		*/
         	}
         	
         	
