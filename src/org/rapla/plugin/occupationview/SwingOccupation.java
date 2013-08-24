@@ -309,10 +309,10 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         calendarDE = timeShift.getSelectedEndTime(); // end midnight
 
         Date startTime = calendarDS.getTime();
-		Date endTime = calendarDE.getTime();
-		String startString = raplaLocale.formatDateShort(startTime) +" "+ raplaLocale.formatTime(startTime);
-		String endString = raplaLocale.formatDateShort(endTime) +" "+ raplaLocale.formatTime(endTime);
-		getLogger().info("Selected - Start: " +         startString  + " Stop: " + endString);
+		//Date endTime = calendarDE.getTime();
+		//String startString = raplaLocale.formatDateShort(startTime) +" "+ raplaLocale.formatTime(startTime);
+		//String endString = raplaLocale.formatDateShort(endTime) +" "+ raplaLocale.formatTime(endTime);
+		//getLogger().info("Selected - Start: " +         startString  + " Stop: " + endString);
 
         // calculate number of columns required to display from calendar
         Calendar calendarTmp = (Calendar) calendarDS.clone();
@@ -700,9 +700,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             super.setHorizontalAlignment(SwingConstants.CENTER);
 
             LinesBorder cellBorder = new LinesBorder(Color.BLACK); 
-            cell.setBackground( Color.WHITE );
+            cell.setBackground( Color.WHITE ); // full cell is painted WHITE
            
 	        if( value instanceof OccupationCell ) {
+				Calendar calendar = Calendar.getInstance(getRaplaLocale().getImportExportTimeZone());
+				cellBorder.setLocation(r,c); // for debug purposes
 	        	OccupationCell occCell = (OccupationCell) value;
 	        	final Appointment appointment = occCell.getAppointment();
 	        	
@@ -713,31 +715,31 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        	if( appointment != null ) {
 		            cellBorder.setThickness(thickness, NORTH);
 	        		if(occCell.leftBound=='[') {
+	        			cellBorder.setBound(occCell.leftBound);		
 	        			cellBorder.setThickness(thickness, WEST);
-	        			//cellBorder.setColor(Color.LIGHT_GRAY, WEST);
 	        		}
 	        		else 
 	        			if(occCell.leftBound=='<') {
-	        				Calendar calendar = Calendar.getInstance();
-	        				calendar.setTime(appointment.getStart());
-	        				cellBorder.setThickness(calendar.get(Calendar.HOUR_OF_DAY), WEST); 
+		        			cellBorder.setBound(occCell.leftBound);	
+	        				calendar.setTime(getRaplaLocale().fromRaplaTime(getRaplaLocale().getImportExportTimeZone(),appointment.getStart()));
+	        				cellBorder.setThickness(calendar.get(Calendar.HOUR_OF_DAY), WEST);
 	        				cellBorder.setColor(Color.LIGHT_GRAY, WEST);
 	        			}
 	        			else
 	        				cellBorder.setThickness(0, WEST);
 	    	        
 	        		if(occCell.rightBound==']') {
+	        			cellBorder.setBound(occCell.rightBound);	
 	        			cellBorder.setThickness(thickness, EAST);
-						//cellBorder.setColor(Color.LIGHT_GRAY, EAST);
 	        		}
 	        		else 
 	        			if(occCell.rightBound=='>') {
-	        				Calendar calendar = Calendar.getInstance();
-	        				calendar.setTime(appointment.getEnd());
+		        			cellBorder.setBound(occCell.rightBound);
+	        				calendar.setTime(getRaplaLocale().fromRaplaTime(getRaplaLocale().getImportExportTimeZone(),appointment.getEnd()));
 	        				cellBorder.setThickness(24 - calendar.get(Calendar.HOUR_OF_DAY), EAST); 
     						cellBorder.setColor(Color.LIGHT_GRAY, EAST);
 	        			}
-	        			else
+	        			else 
 	            			cellBorder.setThickness(0, EAST);
 	        		
  	    	        cellBorder.setThickness(thickness, SOUTH);
@@ -1487,7 +1489,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     	calendarEnd.setTime(selectedDate);
     	int nTimes = getReservationOptions().getnTimes();
 		calendarEnd.add(Calendar.DATE, nTimes - 1 );
-    	long endTime = getCalendarOptions().isWorktimeOvernight() ? DateTools.MILLISECONDS_PER_DAY : 0
+    	long endTime = (getCalendarOptions().isWorktimeOvernight() ? DateTools.MILLISECONDS_PER_DAY : 0)
 			         + getCalendarOptions().getWorktimeEndMinutes() * DateTools.MILLISECONDS_PER_MINUTE;  	
     	calendarEnd.add(Calendar.MILLISECOND, (int) endTime);
 
@@ -1641,9 +1643,21 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		protected Color southColor;
 		protected Color eastColor;
 		protected Color westColor;
+		protected int row,column; 
+		protected char bound;
+		protected Color borderColor;
 		  
 		public LinesBorder(Color color) {
 			this(color, 1);
+		}
+
+		public void setLocation(int r, int c) {
+			row = r;
+			column = c;		
+		}
+		
+		public void setBound(char bound) {
+			this.bound=bound;	
 		}
 
 		public LinesBorder(Color color, int thickness)  {
@@ -1667,6 +1681,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		}
 
 		public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+		    //System.out.println("cellLocation= (" +  row +", " + column +")");
 			Color oldColor = g.getColor();
 			//System.out.println("x=" + x + " ,y=" + y + " ,width=" + width + " ,height=" + height);
 		    g.setColor(northColor);
@@ -1681,16 +1696,28 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
 		    g.setColor(westColor);
 		    //System.out.println("westThickness=" + westThickness);
-		    for (int i = 0; i < westThickness; i++)  {
+		    int i = 0;
+		    for (; i < westThickness - 2; i++)  {
 		      g.drawLine(x+i, y, x+i, y+height-1);
 		      //System.out.println("West X1=" + (x+i) +" ,Y1=" + y + " ,X2=" + (x+i) +" ,Y2=" + (y+height-1));
 		    }
+		    if(bound == '<') { // StartBorder
+			    g.setColor(borderColor);
+		    	g.drawLine(x+i, y, x+i, y+height-1);
+		    	i++;
+		    	g.drawLine(x+i, y, x+i, y+height-1); 
+		    }
 		    
-		    g.setColor(eastColor);
 		    //System.out.println("eastThickness=" + eastThickness);
-		    for (int i = 0; i < eastThickness; i++)  {
-		      g.drawLine(x+width-eastThickness+i, y, x+width-eastThickness+i, y+height-1);
-		      //System.out.println("East X1=" + (x+width-eastThickness+i) +" ,Y1=" + y + " ,X2=" + (x+width-eastThickness+i) +" ,Y2=" + (y+height-1));
+		    if(bound == '>') { // EndBorder 
+			    g.setColor(borderColor);
+			    g.drawLine(x+width-eastThickness-2, y, x+width-eastThickness-2, y+height-1);
+			    g.drawLine(x+width-eastThickness-1, y, x+width-eastThickness-1, y+height-1);
+		    }
+		    g.setColor(eastColor);
+		    for (int j = 0; j < eastThickness; j++)  {
+		      g.drawLine(x+width-eastThickness+j, y, x+width-eastThickness+j, y+height-1);
+		      //System.out.println("East X1=" + (x+width-eastThickness+j) +" ,Y1=" + y + " ,X2=" + (x+width-eastThickness+j) +" ,Y2=" + (y+height-1));
 		    }
 		    
 		    g.setColor(oldColor);
@@ -1713,6 +1740,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		    southColor = c;
 		    eastColor  = c;
 		    westColor  = c;
+		    borderColor = c;
 		}
 		  
 		public void setColor(Color c, int direction) {

@@ -59,11 +59,7 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
 
 
     JComboBox repeatingType = new JComboBox( new String[] {
-		          RepeatingType.DAILY.toString()
-		        , RepeatingType.WEEKLY.toString()
-		        , RepeatingType.MONTHLY.toString()
-		        , RepeatingType.YEARLY.toString()
-		        , NO_REPEATING
+    		"no_repeating", "daily", "weekly", "monthly", "yearly"
 		  });
 
     JComboBox eventTypeSelector;
@@ -93,7 +89,7 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         ActionListener repeatingListener = new ActionListener() {
             @Override
 			public void actionPerformed(ActionEvent evt) {
-                if(repeatingType.getSelectedIndex() == 4) {
+                if(repeatingType.getSelectedIndex() == 0) {
                 	repeatingDuration.setEnabled(false);
                 	nTimesField.setEnabled(false);
                 } else {

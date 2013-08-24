@@ -93,10 +93,6 @@ public class CleanUpService extends RaplaComponent implements ServerExtension
                         getLogger().info("CleanUp Service: Cleaning event id=" + ((RefEntity)event).getId().toString());
     		    		getClientFacade().remove( event );
     		    		eventCount++;
-                        /*
-                    	toRemove.add(event);
-                        getLogger().info("CleanUp Service: Cleaning event id=" + ((RefEntity)event).getShortId().toString());
-                        */
                     }
                 }
             }
