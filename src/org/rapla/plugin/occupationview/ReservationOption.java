@@ -59,13 +59,11 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
 
 
     JComboBox repeatingType = new JComboBox( new String[] {
-    		"no_repeating", "daily", "weekly", "monthly", "yearly"
+    		NO_REPEATING, "daily", "weekly", "monthly", "yearly"
 		  });
 
     JComboBox eventTypeSelector;
-    //RaplaTime splitTime;
     
-
     public ReservationOption(RaplaContext sm) throws RaplaException {
         super( sm );
         double pre = TableLayoutConstants.PREFERRED;
@@ -74,14 +72,11 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         panel.setLayout( new TableLayout(new double[][] {{pre, 5, pre, 5 , pre, 5, pre}, {pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,pre,5,fill}}));
         ListRenderer listRenderer = new ListRenderer();
         
-// BJO 00000012 
        panel.add( new JLabel(getString("repeating")),"0,2"  );
-// BJO 00000012 
-// BJO 00000052        
+      
         panel.add( repeatingType,"2,2");
         repeatingType.setRenderer( listRenderer );   
-// BJO 00000052
-// BJO 00000012 
+
         panel.add( repeatingDuration,"4,2");
         panel.add( nTimesField,"6,2");
        
@@ -104,20 +99,11 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         repeatingType.addActionListener(repeatingListener);     
         repeatingDuration.addActionListener(repeatingListener);   
         
-// BJO 00000063 
         panel.add( new JLabel(getString("reservation_type")),"0,4"  );
         DynamicType[] types = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION);
         eventTypeSelector =  new JComboBox( types );
         panel.add( eventTypeSelector,"2,4");
         eventTypeSelector.setRenderer(new NamedListCellRenderer(getI18n().getLocale()));
-        //eventTypeSelector.addActionListener( this );
-// BJO 00000063 
-        /*
-        splitTime = createRaplaTime();
-        splitTime.setRowsPerHour( 1 );
-        panel.add( new JLabel(getString("splittime")),"0,6"  );
-        panel.add( splitTime,"2,6");
-        */
     }
 
     @Override
@@ -144,24 +130,20 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
             options = new ReservationOptionsImpl();
         }
 
-// BJO 00000012
-        //repeating.setSelectedItem( options.isInfiniteRepeating() ? ReservationOptionsImpl.NTIMES : ReservationOptionsImpl.REPEATING_NTIMES );
         repeatingDuration.setSelectedItem( options.getRepeatingDuration());
         nTimesField.setNumber( new Long(options.getnTimes()));
         nTimesField.setEnabled(options.isNtimesRepeating());
-// BJO 00000012
-// BJO 00000052
+
         RepeatingType repeatingTypeValue = options.getRepeatingType();
         if ( repeatingTypeValue != null)
         {
-        	repeatingType.setSelectedItem( repeatingTypeValue);
+        	repeatingType.setSelectedItem( repeatingTypeValue.toString());
         }
         else
         {
-        	repeatingType.setSelectedIndex(4);
+        	repeatingType.setSelectedIndex(0);
         }
-// BJO 00000052
-// BJO 00000063 
+ 
         String eventType = options.getEventType();
         DynamicType dt;
     	if(eventType==null)
@@ -173,22 +155,13 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
 		    		dt = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0];
 		    	}    	
        	eventTypeSelector.setSelectedItem(dt);
-// BJO 00000063 
-       	/*
-        int splitMinutes = options.getSplitTimeMinutes();
-        Calendar calendar = getRaplaLocale().createCalendar();
-        calendar.set( Calendar.HOUR_OF_DAY, splitMinutes / 60);
-        calendar.set( Calendar.MINUTE, splitMinutes % 60);
-        splitTime.setTime( calendar.getTime() );
-        */
     }
 
     @Override
 	public void commit() {
     	// Save the options
         DefaultConfiguration reservationOptions = new DefaultConfiguration("reservation-options");
-      
-// BJO 00000012   
+        
         DefaultConfiguration repeating = new DefaultConfiguration(ReservationOptionsImpl.REPEATING); 
         RepeatingEnding repeatingValue = (RepeatingEnding) this.repeatingDuration.getSelectedItem();
         if ( repeatingValue != null )
@@ -200,9 +173,7 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         DefaultConfiguration nTimes = new DefaultConfiguration(ReservationOptionsImpl.NTIMES);
         nTimes.setValue( nTimesField.getNumber().intValue());
         reservationOptions.addChild( nTimes);
-// BJO 00000012
-
-// BJO 00000052   
+   
         DefaultConfiguration repeatingType = new DefaultConfiguration(ReservationOptionsImpl.REPEATINGTYPE); 
         String repeatingTypeValue =  (String)this.repeatingType.getSelectedItem();
         if ( repeatingTypeValue != null )
@@ -218,12 +189,11 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         }
         else
         {
-        	repeatingType.setValue( RepeatingType.DAILY.toString() );     
+        	repeatingType.setValue( null );     
         }
         reservationOptions.addChild( repeatingType);
-// BJO 00000052
 
-// BJO 00000063        
+       
         DefaultConfiguration eventType = new DefaultConfiguration(ReservationOptionsImpl.EVENTTYPE);
         DynamicType dynamicType = (DynamicType) eventTypeSelector.getSelectedItem();
         if ( dynamicType != null )
@@ -231,29 +201,11 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         	eventType.setValue( dynamicType.getElementKey() );
         }
         reservationOptions.addChild( eventType );
-// BJO 00000063
-        /*
-        DefaultConfiguration splittime = new DefaultConfiguration(ReservationOptionsImpl.SPLITTIME);
-        Calendar calendar = getRaplaLocale().createCalendar();
-        calendar.setTime( splitTime.getTime());
-        int splitMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60;
-        splitMinutes += calendar.get(Calendar.MINUTE);
-        splittime.setValue(  splitMinutes );
-        reservationOptions.addChild( splittime);
-	*/
+
         preferences.putEntry( ReservationOptionsImpl.RESERVATION_OPTIONS,new RaplaConfiguration( reservationOptions));
 	}
 
-/*	
-    public void actionPerformed(ActionEvent event) {
 
-            Object source = event.getSource();
-            if (source == eventTypeSelector ) {
-                DynamicType dynamicType = (DynamicType) eventTypeSelector.getSelectedItem();
-            }
-
-    }
-*/
 	private class ListRenderer extends DefaultListCellRenderer  {
 		private static final long serialVersionUID = 1L;
 		

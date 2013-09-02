@@ -19,7 +19,6 @@ import org.rapla.framework.RaplaException;
 import org.rapla.framework.TypedComponentRole;
 
 /** <strong>WARNING!!</strong> This class should not be public to the outside. Please use the interface */
-// BJO 00000120
 public class ReservationOptionsImpl implements ReservationOptions {
     public final static TypedComponentRole<RaplaConfiguration> RESERVATION_OPTIONS= new TypedComponentRole<RaplaConfiguration>("org.rapla.reservation");
 
@@ -35,22 +34,19 @@ public class ReservationOptionsImpl implements ReservationOptions {
     RepeatingType repeatingType;    
     public final static String REPEATINGTYPE="repeatingtype"; 
     public final static String EVENTTYPE = "eventtype";
-	public static final String SPLITTIME = "splittime";
-    int splitMinutes; 
     Configuration config;
 
     String eventType;
 
     public ReservationOptionsImpl(Configuration config ) throws RaplaException {
-        this.config = config;
+        this.config = config; 
         repeatingField = RepeatingEnding.findForString(config.getChild( REPEATING ).getValue( RepeatingEnding.END_DATE.toString() ));
         nTimes = config.getChild( NTIMES ).getValueAsInteger( 1 );
 
-        repeatingType = RepeatingType.findForString(config.getChild( REPEATINGTYPE ).getValue( RepeatingType.WEEKLY.toString() ));
+        repeatingType = RepeatingType.findForString(config.getChild( REPEATINGTYPE ).getValue( "" ));
 
         eventType = config.getChild( EVENTTYPE ).getValue(null);
         
-        splitMinutes = config.getChild( SPLITTIME ).getValueAsInteger( 0 ); // 00:00
     }
 
     public ReservationOptionsImpl() throws RaplaException {
@@ -121,8 +117,4 @@ public class ReservationOptionsImpl implements ReservationOptions {
 	public String getEventType() {
         return eventType;
     }
-
-	public int getSplitTimeMinutes() {
-		return splitMinutes;
-	}
 }

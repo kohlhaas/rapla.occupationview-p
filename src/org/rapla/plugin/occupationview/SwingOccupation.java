@@ -289,6 +289,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     	
         excludeDays = getCalendarOptions().getExcludeDays();  	
     	eventType = getReservationOptions().getEventType();
+
         try {
         	getClientFacade().getDynamicType(eventType);
         } catch (EntityNotFoundException ex) {
@@ -914,8 +915,13 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     }
 
     private Color getColorForClassifiable( Classifiable classifiable ) {
-        Classification c = classifiable.getClassification();
+    	Classification c = classifiable.getClassification();
         Attribute colorAttribute = c.getAttribute("color");
+        String annotation = c.getType().getAnnotation(DynamicTypeAnnotations.KEY_COLORS);
+        if ( annotation != null && annotation.equals( DynamicTypeAnnotations.COLORS_DISABLED))
+        {
+        	return null;
+        }
         String color = null;
         if ( colorAttribute != null) {
             Object hexValue = c.getValue( colorAttribute );

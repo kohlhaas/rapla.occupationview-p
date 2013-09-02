@@ -28,5 +28,4 @@ public interface ReservationOptions {
 	RepeatingType getRepeatingType();
 	String getEventType();
 	int getRepeating();
-	//int getSplitTimeMinutes();
 }
