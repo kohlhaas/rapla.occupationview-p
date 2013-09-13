@@ -967,7 +967,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         }
     }
     
-	private final String dayNames[] = new DateFormatSymbols().getShortWeekdays();
+	private final String dayNames[] = new DateFormatSymbols(locale).getShortWeekdays();
     class DayOfWeekHeaderRenderer extends DefaultTableCellRenderer {
     	private String tag;
 		private static final long serialVersionUID = 1L;
@@ -979,7 +979,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	if(value instanceof String)
         	{
         		int dd = Integer.parseInt(((String) value));
-        		setText(dayNames[dd]);
+        		setText((dayNames[dd]).substring(0, 2));
         		if( dd == Calendar.SUNDAY || dd == Calendar.SATURDAY)
         			setBackground(Color.LIGHT_GRAY);
         		else
