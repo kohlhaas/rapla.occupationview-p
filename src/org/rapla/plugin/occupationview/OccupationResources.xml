@@ -45,24 +45,16 @@
     <text lang="en">Months: </text>
     <text lang="de">Monate: </text>
     <text lang="fr">Mois: </text>
-    <text lang="es">...: </text>
-    <text lang="cs">...: </text> 
     <text lang="nl">Maanden: </text>   
   </entry>
   <entry key="firstFit">
     <text lang="en">First fit</text>
-    <text lang="de">...: </text>
     <text lang="fr">Premier libre</text>
-    <text lang="es">...: </text>
-    <text lang="cs">...: </text> 
     <text lang="nl">Eerst vrij</text>   
   </entry>
   <entry key="bestFit">
     <text lang="en">Best fit</text>
-    <text lang="de">...: </text>
     <text lang="fr">Mellieur libre</text>
-    <text lang="es">...: </text>
-    <text lang="cs">...: </text> 
     <text lang="nl">Beste vrij</text>   
   </entry>
   <entry key="free">
@@ -256,10 +248,7 @@
 </entry>
     <entry key="older">
         <text lang="en">All events older than: </text>
-        <text lang="de">??</text>
         <text lang="fr">Tous activité plus viex que:</text>
-        <text lang="es">??</text>
-        <text lang="cs">??</text>
         <text lang="nl">Alle activiteiten ouder dan: </text>
     </entry>
     <entry key="dayfieldlimits">
@@ -272,10 +261,7 @@
     </entry>
     <entry key="cleanup_time">
         <text lang="en">Every day at:</text>
-        <text lang="de">??</text>
         <text lang="fr">Cchaque jour:</text>
-        <text lang="es">??</text>
-        <text lang="cs">??</text>
         <text lang="nl">Elke dag om:</text>
     </entry>
     <entry key="cleanup_date">
@@ -304,18 +290,10 @@
     </entry> 
         <entry key="OccupationCleanup">
         <text lang="en">OccupationCleanup</text>
-        <text lang="de">..</text>
-        <text lang="fr">..</text>
-        <text lang="es">..</text>
-        <text lang="cs">..</text>
         <text lang="nl">Bezetting cleanup</text>
     </entry> 
     <entry key="active">
         <text lang="en">Active</text>
-        <text lang="de">..</text>
-        <text lang="fr">..</text>
-        <text lang="es">..</text>
-        <text lang="cs">..</text>
         <text lang="nl">Actief</text>
     </entry>
     <entry key= "event.config.error">

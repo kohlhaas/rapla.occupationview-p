@@ -1,27 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry exported="true" kind="src" path="/Rapla">
-			<accessrules>
-			<accessrule kind="discouraged" pattern="org/rapla/**/internal/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/framework/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/entities/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/facade/*"/>
-			<accessrule kind="accessible" pattern="javax/servlet/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/components/**"/>
-			<accessrule kind="accessible" pattern="org/rapla/gui/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/client/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/gui/toolkit/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/plugin/mail/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/plugin/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/servletpages/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/plugin/abstractcalendar/*"/>
-			<accessrule kind="accessible" pattern="org/rapla/components/iolayer/*"/>
-			<accessrule kind="discouraged" pattern="org/rapla/**"/>
-			<accessrule kind="nonaccessible" pattern="**"/>
-		</accessrules>
-	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Rapla"/>
 	<classpathentry kind="output" path="eclipse-build"/>
 </classpath>

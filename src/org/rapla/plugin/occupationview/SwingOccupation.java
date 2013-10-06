@@ -1535,7 +1535,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             conf = getQuery().getPreferences(null).getEntry(ReservationOptionsImpl.RESERVATION_OPTIONS);        
     	if ( conf == null) {
     		options = new ReservationOptionsImpl();
-			throw new EntityNotFoundException(getString("event.config.error"));
+			//throw new EntityNotFoundException(getString("event.config.error"));
     	}
     	else
     		options = new ReservationOptionsImpl(conf);
