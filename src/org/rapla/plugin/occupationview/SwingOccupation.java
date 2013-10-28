@@ -102,8 +102,8 @@ import org.rapla.framework.RaplaLocale;
 import org.rapla.gui.RaplaGUIComponent;
 import org.rapla.gui.SwingCalendarView;
 import org.rapla.gui.internal.action.AppointmentAction;
+import org.rapla.gui.toolkit.AWTColorUtil;
 import org.rapla.gui.toolkit.DialogUI;
-import org.rapla.gui.toolkit.RaplaColorList;
 import org.rapla.gui.toolkit.RaplaFrame;
 
 
@@ -752,7 +752,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	           			if(occCell.getTypeId() == OccupationCell.OCCUPIED)
 	           				cell.setBackground( color);
 	           			if(occCell.getTypeId() == OccupationCell.FILTERED) { 
-	           				cell.setBackground( adjustColor(  RaplaColorList.getHexForColor(color), 60 ));
+	           				cell.setBackground( adjustColor( AWTColorUtil.getHexForColor(color), 60 ));
 	    	           	if(occCell.getTypeId() == OccupationCell.CONFLICT)
 	    	           		cell.setBackground( color);
 
@@ -2005,11 +2005,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             Color or;
             try
             {
-                or = RaplaColorList.getColorForHex( org );
+                or = AWTColorUtil.getColorForHex( org );
             }
             catch ( NumberFormatException nf )
             {
-                or = RaplaColorList.getColorForHex( "#FFFFFF" );
+                or = AWTColorUtil.getColorForHex( "#FFFFFF" );
             }
             color = new Color( or.getRed(), or.getGreen(), or.getBlue(), alpha );
             colorMap.put( org, color );
