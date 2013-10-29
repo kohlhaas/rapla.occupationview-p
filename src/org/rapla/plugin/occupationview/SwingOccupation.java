@@ -752,7 +752,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	           			if(occCell.getTypeId() == OccupationCell.OCCUPIED)
 	           				cell.setBackground( color);
 	           			if(occCell.getTypeId() == OccupationCell.FILTERED) { 
-	           				cell.setBackground( adjustColor( AWTColorUtil.getHexForColor(color), 60 ));
+	           				cell.setBackground( adjustColor(  AWTColorUtil.getHexForColor(color), 60 ));
 	    	           	if(occCell.getTypeId() == OccupationCell.CONFLICT)
 	    	           		cell.setBackground( color);
 
