@@ -918,7 +918,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     	Classification c = classifiable.getClassification();
         Attribute colorAttribute = c.getAttribute("color");
         String annotation = c.getType().getAnnotation(DynamicTypeAnnotations.KEY_COLORS);
-        if ( annotation != null && annotation.equals( DynamicTypeAnnotations.COLORS_DISABLED))
+        if ( annotation != null && annotation.equals( DynamicTypeAnnotations.VALUE_COLORS_DISABLED))
         {
         	return null;
         }
