@@ -61,8 +61,6 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
     JComboBox repeatingType = new JComboBox( new String[] {
     		NO_REPEATING, "daily", "weekly", "monthly", "yearly"
 		  });
-
-    JComboBox eventTypeSelector;
     
     public ReservationOption(RaplaContext sm) throws RaplaException {
         super( sm );
@@ -98,12 +96,6 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         };
         repeatingType.addActionListener(repeatingListener);     
         repeatingDuration.addActionListener(repeatingListener);   
-        
-        panel.add( new JLabel(getString("reservation_type")),"0,4"  );
-        DynamicType[] types = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION);
-        eventTypeSelector =  new JComboBox( types );
-        panel.add( eventTypeSelector,"2,4");
-        eventTypeSelector.setRenderer(new NamedListCellRenderer(getI18n().getLocale()));
     }
 
     @Override
@@ -143,18 +135,6 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         {
         	repeatingType.setSelectedIndex(0);
         }
- 
-        String eventType = options.getEventType();
-        DynamicType dt;
-    	if(eventType==null)
-    		dt = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0];
-		else 
-			try {
-				dt = getQuery().getDynamicType(eventType);
-		    	} catch (EntityNotFoundException ex) {
-		    		dt = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0];
-		    	}    	
-       	eventTypeSelector.setSelectedItem(dt);
     }
 
     @Override
@@ -192,15 +172,6 @@ public class ReservationOption extends RaplaGUIComponent implements OptionPanel 
         	repeatingType.setValue( null );     
         }
         reservationOptions.addChild( repeatingType);
-
-       
-        DefaultConfiguration eventType = new DefaultConfiguration(ReservationOptionsImpl.EVENTTYPE);
-        DynamicType dynamicType = (DynamicType) eventTypeSelector.getSelectedItem();
-        if ( dynamicType != null )
-        {
-        	eventType.setValue( dynamicType.getElementKey() );
-        }
-        reservationOptions.addChild( eventType );
 
         preferences.putEntry( ReservationOptionsImpl.RESERVATION_OPTIONS,new RaplaConfiguration( reservationOptions));
 	}

@@ -77,7 +77,6 @@ import org.rapla.components.tablesorter.TableSorter;
 import org.rapla.components.util.DateTools;
 import org.rapla.entities.Category;
 import org.rapla.entities.CategoryAnnotations;
-import org.rapla.entities.EntityNotFoundException;
 import org.rapla.entities.User;
 import org.rapla.entities.configuration.RaplaConfiguration;
 import org.rapla.entities.domain.Allocatable;
@@ -288,13 +287,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         // get default user preferences from user profile
     	
         excludeDays = getCalendarOptions().getExcludeDays();  	
-    	eventType = getReservationOptions().getEventType();
 
-        try {
-        	getClientFacade().getDynamicType(eventType);
-        } catch (EntityNotFoundException ex) {
-        	eventType = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0].getElementKey();
-        }	
+        eventType = getQuery().getDynamicTypes( DynamicTypeAnnotations.VALUE_CLASSIFICATION_TYPE_RESERVATION)[0].getKey();
      	
     	timeShift.update(false);
     	int months = timeShift.getMonths();
@@ -1184,7 +1178,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        try 
 	        {
 	            User user = getUser();
-	            boolean canView = getQuery().canReadReservationsFromOthers( user) || user.equals( owner);
+	            boolean canView = canRead(reservation, user);
 	            viewItemAppointment.setEnabled( canView);
 	        } 
 	        catch (RaplaException ex)
