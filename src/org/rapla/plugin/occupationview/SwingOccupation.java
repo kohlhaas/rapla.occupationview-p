@@ -49,7 +49,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.TimeZone;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -75,6 +74,7 @@ import org.rapla.components.calendar.DateChangeListener;
 import org.rapla.components.calendar.RaplaTime;
 import org.rapla.components.tablesorter.TableSorter;
 import org.rapla.components.util.DateTools;
+import org.rapla.components.util.DateTools.DateWithoutTimezone;
 import org.rapla.entities.Category;
 import org.rapla.entities.CategoryAnnotations;
 import org.rapla.entities.User;
@@ -145,9 +145,6 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     Reservation selectedInterval;
     
     RaplaLocale raplaLocale = getRaplaLocale();
-    TimeZone timezone = raplaLocale.getTimeZone();
-    Calendar calendarDS = raplaLocale.createCalendar();
-    Calendar calendarDE = raplaLocale.createCalendar();
 
     public SwingOccupation( RaplaContext context, final CalendarModel model, final boolean editable ) throws RaplaException
     {
@@ -300,21 +297,25 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         if(rowCount == 0)
         	return;
         Iterator<Allocatable> it = allocatableList.iterator();
-        calendarDS = timeShift.getSelectedStartTime(); // start midnight
-        calendarDE = timeShift.getSelectedEndTime(); // end midnight
+        Date startTime = timeShift.getSelectedStartTime(); // start midnight
+        Date endTime = timeShift.getSelectedEndTime(); // end midnight
 
-        Date startTime = calendarDS.getTime();
+        //Date startTime = calendarDS.getTime();
 		//Date endTime = calendarDE.getTime();
 		//String startString = raplaLocale.formatDateShort(startTime) +" "+ raplaLocale.formatTime(startTime);
 		//String endString = raplaLocale.formatDateShort(endTime) +" "+ raplaLocale.formatTime(endTime);
 		//getLogger().info("Selected - Start: " +         startString  + " Stop: " + endString);
 
         // calculate number of columns required to display from calendar
-        Calendar calendarTmp = (Calendar) calendarDS.clone();
-        int totalDays= -1 * calendarTmp.get(Calendar.DAY_OF_MONTH) + 1;
+        //Calendar calendarTmp = (Calendar) calendarDS.clone();
+        final DateWithoutTimezone date = DateTools.toDate( startTime.getTime());
+        
+        int totalDays= -1 * date.day + 1;
+        int year = date.year;
+        int month = date.month;
         for ( int i = 0; i< months; i++) {
-        	totalDays += calendarTmp.getActualMaximum(Calendar.DAY_OF_MONTH);
-        	calendarTmp.add(calendarShift, 1);
+        	totalDays += DateTools.getDaysInMonth(year, month);
+        	month++;
         }
         int columnCount = totalDays + OccupationTableModel.CALENDAR_EVENTS ; // + for fixed columns
         //Object occupationTable[][] = new Object[rowCount][columnCount]; 
@@ -368,8 +369,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     		AllocationCell alcCell = new AllocationCell(alloc);
     		
     		// get reservation data
-            Calendar calendarTDS = (Calendar) calendarDS.clone();
-            Calendar calendarTDE = (Calendar) calendarDE.clone();
+            Date calendarTDS = startTime;
+            Date calendarTDE = endTime;
 			
     		occupationTableModel.setValueAt( alcCell, r, OccupationTableModel.CALENDAR_RESOURCE);
             //mutableReservation.addAllocatable(alloc);
@@ -380,9 +381,10 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	for ( int k = OccupationTableModel.CALENDAR_EVENTS ; k <= columnCount-1; k++) {
                 //long start = System.currentTimeMillis(); 
         		
-        		if ( excludeDays.contains(calendarTDS.get(Calendar.DAY_OF_WEEK)))  {
-        			calendarTDS.add(Calendar.DATE, 1); // next startday
-        			calendarTDE.add(Calendar.DATE, 1); // next endday
+        		final int dayOfWeek = DateTools.getWeekday(calendarTDS);
+                if ( excludeDays.contains(dayOfWeek))  {
+        			calendarTDS = DateTools.addDay( calendarTDS); // next startday
+        			calendarTDE  = DateTools.addDay( calendarTDE); // next endday
         			continue;
         		}
         		int c = occupationTableModel.addColumn(1);
@@ -392,8 +394,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     			// Not Free
 		    	Collection<Reservation> filteredReservations = null;
 		        if((cfilters != null))
-		        	filteredReservations = new HashSet<Reservation>(Arrays.asList(qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS.getTime(),calendarTDE.getTime(), cfilters)));
-    			Reservation[] reservationDay = qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS.getTime(),calendarTDE.getTime(), null);
+		        	filteredReservations = new HashSet<Reservation>(Arrays.asList(qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS,calendarTDE, cfilters)));
+    			Reservation[] reservationDay = qry.getReservationsForAllocatable(new Allocatable[] { alloc },calendarTDS,calendarTDE, null);
 				//  A from-to will be split is days like [ [ or ] [ or ] [ or ] ] "[" is left boundary = startdate, "]" is right boundary = enddate
 				//   ] and [ used in the middle.
 				// System.out.println("Name: " + alloc.getName(locale) + "Start: " + calendarTDS.getTime() + " Stop: " + calendarTDE.getTime());
@@ -407,13 +409,13 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
                     Appointment[] apps = reservation.getAppointmentsFor(alloc);
                     for(int i=0;i < apps.length;i++) {
                     	app = apps[i];	
-                    	if(!app.overlaps(calendarTDS.getTime(), calendarTDE.getTime()))
+                    	if(!app.overlaps(calendarTDS, calendarTDE))
                     		continue;
 	                    //System.out.println(alloc.getName(locale));
 	                    //System.out.println("Start= " + app.getStart() + " TDS= " + calendarTDS.getTime());
                     	if(excludeDays.size() == 0 ) {
                     		Date minStartDate = app.getStart();
-		                    if(DateTools.isSameDay(minStartDate.getTime(),calendarTDS.getTime().getTime()))
+		                    if(DateTools.isSameDay(minStartDate.getTime(),calendarTDS.getTime()))
 		                    	if(DateTools.isMidnight(minStartDate))
 		                    		leftBound = '[';
 		                    	else
@@ -430,11 +432,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		            		rightBound = '[';
 		                    if(maxendDate!=null)
 		                    	if(DateTools.isMidnight(maxendDate)) { // endDate 00:00:00 = previous date
-		                    		if(DateTools.isSameDay((DateTools.subDay(maxendDate)).getTime(),calendarTDS.getTime().getTime()))
+		                    		if(DateTools.isSameDay((DateTools.subDay(maxendDate)).getTime(),calendarTDS.getTime()))
 		                    			rightBound = ']';
 		                    	}
 		                    	else
-			                    	if(DateTools.isSameDay(maxendDate.getTime(),calendarTDS.getTime().getTime()))
+			                    	if(DateTools.isSameDay(maxendDate.getTime(),calendarTDS.getTime()))
 			                    		rightBound = '>';	                    			           
                     	}
                     	else {
@@ -449,7 +451,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
                     		occCellOld.setTypeId(OccupationCell.OCCUPIED);
                     		Repeating repeating = app.getRepeating();
                     		if(repeating != null)
-                    			if(repeating.isException(calendarTDS.getTime().getTime()))
+                    			if(repeating.isException(calendarTDS.getTime()))
                     				occCellOld.setTypeId(OccupationCell.EXCEPTION);
                     		//occupationTableModel.setValueAt( occCellOld, r, c);
                     	}
@@ -468,7 +470,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	            			setDaysInOut(app, r, today);
 	            		else
 	            			if(c >= OccupationTableModel.CALENDAR_EVENTS)
-	            				setDaysInOut(app, r, calendarTDS.getTime());
+	            				setDaysInOut(app, r, calendarTDS);
 	            		
 	        			//System.out.println(res[0].toString() + " Length:" + res.length);
                     }
@@ -480,8 +482,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
                 String DE = sdf.format(calendarTDE.getTime());                
         		System.out.println("Row="+r+" Column=" + c + " StartDate=" + DS + " EndDate= " + DE + " Type = " + occupationType);
                 */
-        		calendarTDS.add(Calendar.DATE, 1); // next startday
-                calendarTDE.add(Calendar.DATE, 1); // next endday
+        		calendarTDS = DateTools.addDay( calendarTDS); // next startday
+                calendarTDE = DateTools.addDay( calendarTDE); // next endday
         	}
             occupationTableModel.addColumn(1); // adjust count +1
         	// Compress ?
@@ -548,7 +550,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         column.setPreferredWidth(40);
         column.setMaxWidth(50);
         
-        calendarTmp = (Calendar) calendarDS.clone();
+        Date calendarTmp = startTime;
         SimpleDateFormat sdfYYYYMM = new SimpleDateFormat("yyyy/MM",locale);
     	sdfYYYYMM.setTimeZone(DateTools.getTimeZone());
         SimpleDateFormat sdfdd = new SimpleDateFormat("dd",locale);
@@ -565,11 +567,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
     	int k = 0 ;
     	for ( int i = OccupationTableModel.CALENDAR_EVENTS ; i <= columnCount-1; i++) {
     		
-    		Date dateTmp = calendarTmp.getTime();
-    		int day = calendarTmp.get(Calendar.DAY_OF_WEEK);
+    		Date dateTmp = calendarTmp;
+    		int day = DateTools.getWeekday(calendarTmp);
             
     		if ( excludeDays.contains( day ) ) {
-    			calendarTmp.add(Calendar.DATE, 1); // next startday
+    		    calendarTmp = DateTools.addDay( calendarTmp);
     			k++; 
     			continue;
     		}
@@ -608,7 +610,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             int  selectedCount = occupationTableModel.getRowCount(i - k);
             column.setHeaderValue(selectedCount);
            	column.setHeaderRenderer(new countRenderer());
-            calendarTmp.add(Calendar.DATE,1);
+           	calendarTmp = DateTools.addDay( calendarTmp);
     	}
         gcm.addColumnGroup(g_GR); // do not forget to add last group
     }
@@ -698,7 +700,6 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
             cell.setBackground( Color.WHITE ); // full cell is painted WHITE
            
 	        if( value instanceof OccupationCell ) {
-				Calendar calendar = Calendar.getInstance(getRaplaLocale().getImportExportTimeZone());
 				cellBorder.setLocation(r,c); // for debug purposes
 	        	OccupationCell occCell = (OccupationCell) value;
 	        	final Appointment appointment = occCell.getAppointment();
@@ -715,9 +716,9 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        		}
 	        		else 
 	        			if(occCell.leftBound=='<') {
-		        			cellBorder.setBound(occCell.leftBound);	
-	        				calendar.setTime(getRaplaLocale().fromRaplaTime(getRaplaLocale().getImportExportTimeZone(),appointment.getStart()));
-	        				cellBorder.setThickness(calendar.get(Calendar.HOUR_OF_DAY), WEST);
+		        			cellBorder.setBound(occCell.leftBound);
+		        			int hour = DateTools.getHourOfDay(appointment.getStart().getTime());
+		        			cellBorder.setThickness(hour, WEST);
 	        				cellBorder.setColor(Color.LIGHT_GRAY, WEST);
 	        			}
 	        			else
@@ -730,8 +731,8 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        		else 
 	        			if(occCell.rightBound=='>') {
 		        			cellBorder.setBound(occCell.rightBound);
-	        				calendar.setTime(getRaplaLocale().fromRaplaTime(getRaplaLocale().getImportExportTimeZone(),appointment.getEnd()));
-	        				cellBorder.setThickness(24 - calendar.get(Calendar.HOUR_OF_DAY), EAST); 
+	        				int hour = DateTools.getHourOfDay(appointment.getEnd().getTime());
+                            cellBorder.setThickness(24 - hour, EAST); 
     						cellBorder.setColor(Color.LIGHT_GRAY, EAST);
 	        			}
 	        			else 
@@ -1056,22 +1057,23 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 
 			if(!isTableEditableTable || isReadOnlyUser || excludeDays.size() != 0)
 				return;
-			
-	        Calendar calendarStart = null;
-	        Calendar calendarEnd = null;
+
+			// FIXME Christopher I commented out calendar Start and because it is not used
+//	        Calendar calendarStart = null;
+	        //Calendar calendarEnd = null;
 
 	        if( occCell.getTypeId() == OccupationCell.FIRSTFIT) { 
 	        	int cs = occupationTableModel.findStartSlot(r, c, -2) - OccupationTableModel.CALENDAR_EVENTS; // corrected start
-				calendarStart = (Calendar) calendarDS.clone();
-				calendarStart.add(Calendar.DATE, cs);
-				calendarEnd = (Calendar) calendarStart.clone();
-	        	calendarEnd.add(Calendar.DATE, occupationTableModel.getFreeSlot());
+//				calendarStart = (Calendar) calendarDS.clone();
+//				calendarStart.add(Calendar.DATE, cs);
+//				calendarEnd = (Calendar) calendarStart.clone();
+//	        	calendarEnd.add(Calendar.DATE, occupationTableModel.getFreeSlot());
 			} else 
 				if( occCell.getTypeId() == OccupationCell.FREE) { // Free Cell
-					calendarStart = (Calendar) calendarDS.clone();
-	        		calendarStart.add(Calendar.DATE, c - OccupationTableModel.CALENDAR_EVENTS);
-					calendarEnd = (Calendar) calendarStart.clone();
-					calendarEnd.add(Calendar.DATE, getReservationOptions().getnTimes() - 1);
+//					calendarStart = (Calendar) calendarDS.clone();
+//	        		calendarStart.add(Calendar.DATE, c - OccupationTableModel.CALENDAR_EVENTS);
+//					calendarEnd = (Calendar) calendarStart.clone();
+//					calendarEnd.add(Calendar.DATE, getReservationOptions().getnTimes() - 1);
 				}
   
 	        JPopupMenu popup = new JPopupMenu();
@@ -1178,7 +1180,7 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	        try 
 	        {
 	            User user = getUser();
-	            boolean canView = canRead(reservation, user);
+	            boolean canView = canRead(user,reservation);
 	            viewItemAppointment.setEnabled( canView);
 	        } 
 	        catch (RaplaException ex)
@@ -1283,11 +1285,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         			getReservationController().edit(appBlock);//, occupationTableModel.getColumnDate(c));
         	}
         	else if(evt.getActionCommand().equals("delete")) {
-        			AppointmentAction deleteAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+        			AppointmentAction deleteAction = createAppointmentAction( getComponent(), getPoint());
         			// get selected date
         			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
         			deleteAction.setDelete(appBlock);//,occupationTableModel.getColumnDate(c));
-            		deleteAction.actionPerformed(evt);
+            		deleteAction.actionPerformed();
         	}	
         	
         	else if(evt.getActionCommand().equals("split")) {
@@ -1302,10 +1304,10 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
         	}	
 			
         	else if(evt.getActionCommand().equals("info")) {
-        			AppointmentAction viewAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+        			AppointmentAction viewAction = createAppointmentAction( getComponent(), getPoint());
         			AppointmentBlock appBlock = new AppointmentBlock((Appointment)obj);
     				viewAction.setView(appBlock);
-    				viewAction.actionPerformed(evt); 
+    				viewAction.actionPerformed(); 
         		}
 	        else if(evt.getActionCommand().equals("archive")) {
 	        		Allocatable alloc = (Allocatable) obj;
@@ -1313,11 +1315,11 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 	                if(type == null)
 	                	return;
 	                    		
-	    			AppointmentAction archiveAction = new AppointmentAction( getContext(), getComponent(), getPoint());
+	    			AppointmentAction archiveAction = createAppointmentAction( getComponent(), getPoint());
 	    			if(sendOKMsg("confirm", cleanupDate) == 0) // OK
 	    				endOfLifeAllocatable (alloc, cleanupDate);
 	    				
-	    			archiveAction.actionPerformed(evt);
+	    			archiveAction.actionPerformed();
 	    		}
         		
 		} catch (RaplaException e1) {
@@ -1557,21 +1559,15 @@ public class SwingOccupation extends RaplaGUIComponent implements SwingCalendarV
 		    	if(periodStartEvent == null) 
 		    		continue;
 		    	
-				Calendar periodStart = Calendar.getInstance(timezone);
-				periodStart.setTime(periodStartEvent);
-				periodStart.add(Calendar.MINUTE, getCalendarOptions().getWorktimeStartMinutes());
-				
-				Calendar periodEnd = Calendar.getInstance(timezone);
-				periodEnd.setTime((Date) periodStartEvent);
-				periodEnd.add(Calendar.YEAR, 1);
-				periodEnd.add(Calendar.MINUTE, getCalendarOptions().getWorktimeEndMinutes());
-				
-				Date start = periodStart.getTime();
-				Date end = periodEnd.getTime();
+		    	final int worktimeStartMinutes = getCalendarOptions().getWorktimeStartMinutes();
+		    	Date start = DateTools.toDateTime(periodStartEvent, new Date(DateTools.toTime(worktimeStartMinutes/ 60, worktimeStartMinutes%60, 0)));
+				Date periodEnd = DateTools.addYear( periodStartEvent);
+				final int worktimeEndMinutes = getCalendarOptions().getWorktimeEndMinutes();
+				Date end = DateTools.toDateTime(periodEnd, new Date(DateTools.toTime(worktimeEndMinutes/ 60, worktimeEndMinutes%60, 0)));
 
 		    	if (start.before(selectedDate) && end.after(selectedDate))
 		    		defaultInterval = intervalLabels.size();
-		    	intervalLabels.add(raplaLocale.formatTimestamp((Date) start,timezone) + " " + raplaLocale.formatTimestamp((Date) end,timezone));
+		    	intervalLabels.add(raplaLocale.formatTimestamp((Date) start) + " " + raplaLocale.formatTimestamp((Date) end));
 		    	intervalDates.add( reservation);
 		    	
 			} catch (NoSuchElementException ex) {

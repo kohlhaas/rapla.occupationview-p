@@ -43,6 +43,9 @@ import org.rapla.components.calendar.RaplaCalendar;
 import org.rapla.components.calendar.RaplaNumber;
 import org.rapla.components.calendar.RaplaTime;
 import org.rapla.components.layout.TableLayout;
+import org.rapla.components.util.DateTools;
+import org.rapla.components.util.DateTools.DateWithoutTimezone;
+import org.rapla.components.util.DateTools.TimeWithoutTimezone;
 import org.rapla.facade.CalendarModel;
 import org.rapla.framework.Disposable;
 import org.rapla.framework.RaplaContext;
@@ -74,7 +77,6 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
     RaplaTime endTime;
     RaplaNumber freeSlot;
     JLabel freeSlotLabel = new JLabel();
-    Calendar calendarDS = getRaplaLocale().createCalendar();
     int duration = 86400000;  
     JButton todayButton= new RaplaButton(getString("today"), RaplaButton.SMALL);
 // BJO 00000101
@@ -279,48 +281,36 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
         return freeSlot.getNumber().intValue();
     }
 
-    public Calendar getSelectedStartTime() {
-        return toDateTime( dateSelection.getDate(), startTime.getTime()); 
+    public Date getSelectedStartTime() {
+        return DateTools.toDateTime( dateSelection.getDate(), startTime.getTime()); 
     }
 
     public int getMonths() {
     	return timeShiftTimes.getNumber().intValue();
     }
     
-    public Calendar getSelectedEndTime() {
+    public Date getSelectedEndTime() {
 		Date date = dateSelection.getDate();
-    	Calendar cal1 = getRaplaLocale().createCalendar();
-    	cal1.setTime( date );
-    	cal1.add(Calendar.MILLISECOND, duration);
-    	return cal1;
+    	return new Date( date.getTime() + duration);
     }
-    
-    private Calendar toDateTime( Date date, Date time)
-    {
-        Calendar cal1 = getRaplaLocale().createCalendar();
-        Calendar cal2 = getRaplaLocale().createCalendar();
-        cal1.setTime( date );
-        cal2.setTime( time );
-        cal1.set( Calendar.HOUR_OF_DAY, cal2.get( Calendar.HOUR_OF_DAY ) );
-        cal1.set( Calendar.MINUTE, cal2.get( Calendar.MINUTE ) );
-        cal1.set( Calendar.SECOND, cal2.get( Calendar.SECOND ) );
-        cal1.set( Calendar.MILLISECOND, cal2.get( Calendar.MILLISECOND ) );
-        return cal1;
-    }
-
     
     private Integer getTimeMs(Date time)
     {
-        Calendar cal = getRaplaLocale().createCalendar();
-        cal.setTime( time );
-        return (( cal.get( Calendar.HOUR_OF_DAY ) * 60 + cal.get( Calendar.MINUTE )) * 60 + cal.get( Calendar.SECOND )) * 1000 + cal.get( Calendar.MILLISECOND ) ;
+        final TimeWithoutTimezone time2 = DateTools.toTime(time.getTime());
+        return (( time2.hour * 60 + time2.minute) * 60 + time2.second) * 1000 + time2.milliseconds ;
     }
     
 	public Date setStartOfMonth(Date startDate) {
-        Calendar startCal = Calendar.getInstance();
-        startCal.setTime(startDate);
+//	    Calendar startCal = Calendar.getInstance();
+//        startCal.setTime(startDate);
 	    if(isStartDayFirstDay) {
-	    	startCal.set(Calendar.DAY_OF_MONTH, 1);
+	    	final DateWithoutTimezone date = DateTools.toDate( startDate.getTime());
+	    	final long date2 = DateTools.toDate( date.year, date.month, 1);
+            return new Date(date2);
+	    }
+	    else
+	    {
+	        return startDate;
 	    }
 	    // do not set model startDate and endDate as it influences other views.
 	    /*
@@ -330,7 +320,7 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
 	    endCal.set(Caleatendar.DAY_OF_MONTH, endCal.getActualMaximum(Calendar.DAY_OF_MONTH));
 	    model.setEndDate(endCal.getTime());
 	    */
-	    return startCal.getTime();
+	    //return startCal.getTime();
 	}
 
 
@@ -344,27 +334,51 @@ public class TimeShiftPanel extends RaplaGUIComponent implements Disposable, Rap
             try {
 	            listenersEnabled = false;
 	            
-	            Calendar calendar = getRaplaLocale().createCalendar();
-	            calendar.setTime(dateSelection.getDate());
-	
-	            if (evt.getSource() == prevButton)
-	            	calendar.add(incrementSize,- timeShiftTimes.getNumber().intValue());
-	            else
-	            	if (evt.getSource() == nextButton) 
-	            		calendar.add(incrementSize,timeShiftTimes.getNumber().intValue());	    
+	            Date calendar = getClientFacade().today();
+	            final Date date2 = dateSelection.getDate();
+                //calendar.setTime(date2);
+	            final int intValue = timeShiftTimes.getNumber().intValue();
+                if (evt.getSource() == prevButton)
+                {
+                    calendar = addIncrement(calendar, -intValue);
+                }
+                else
+	            	if (evt.getSource() == nextButton)
+	            	    calendar = addIncrement( calendar,intValue);
 	            	else
 	            		if (evt.getSource() == todayButton)
-	            			calendar.setTime(new Date());
+	            			calendar = getClientFacade().today();
 		            	else 
 		            		if (evt.getSource() == compactField)
 		            			;
-	            date = calendar.getTime();	
+	            date = calendar;	
 	            fireDateChange( date);
             } finally {
                 listenersEnabled = true;
             }
             
             dateSelection.setDate(date);
+        }
+
+        private Date addIncrement(Date date, int intValue)
+        {
+            if ( incrementSize == Calendar.MONTH)
+            {
+                return date = DateTools.addMonths( date, intValue);
+            }
+            else if ( incrementSize == Calendar.YEAR)
+            {
+                return date = DateTools.addYears( date, intValue);
+            }
+            else if ( incrementSize == Calendar.DATE)
+            {
+                return date = DateTools.addDays( date, intValue);
+            }
+            else if ( incrementSize == Calendar.WEEK_OF_YEAR)
+            {
+                return date = DateTools.addWeeks( date, intValue);
+            }
+            return date;
         }
 
         public void dateChanged(DateChangeEvent evt) {
